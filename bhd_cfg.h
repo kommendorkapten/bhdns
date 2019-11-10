@@ -10,6 +10,7 @@ struct bhd_cfg
         char ifa[STR_LEN];
         char bp[STR_LEN];
         char bresp[STR_LEN];
+        char faddr[STR_LEN];
         uint16_t port;
 };
 

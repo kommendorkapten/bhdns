@@ -7,79 +7,138 @@
 #include "bhd_srv.h"
 #include "bhd_dns.h"
 
-#define BUF_LEN 1432
+/* Max UDP message size from RFC1035 */
+#define BUF_LEN 512
 
-int bhd_serve(const char* addr, uint16_t port)
+void bhd_dns_rr_a_init(struct bhd_dns_rr_a*, const char*);
+static int bhd_srv_serve_one(int, int, struct sockaddr_in*);
+
+int bhd_serve(const char* pfaddr, const char* addr, uint16_t port)
 {
-        char buf[BUF_LEN];
-        ssize_t nb;
-        socklen_t slen;
-        int s;
-        int ret;
         struct sockaddr_in saddr;
-        struct sockaddr_in caddr;
+        struct sockaddr_in faddr;
+        int s;
+        int fs;
+        int ret;
 
-        if (strncmp(addr, "all", 3))
+
+        /* Set up forward address */
+        printf("Forward address: %s\n", pfaddr);
+        memset(&faddr, 0, sizeof(faddr));
+        faddr.sin_family = AF_INET;
+        faddr.sin_port = htons(53);
+        if (inet_pton(AF_INET, pfaddr, &faddr.sin_addr) < 0)
         {
-                printf("Only all address is supported\n");
+                perror("inet_pton");
                 return -1;
         }
+        fs = socket(AF_INET, SOCK_DGRAM, 0);
 
+        /* Set up listening socket */
         s = socket(AF_INET, SOCK_DGRAM, 0);
         if (s < 0)
         {
                 perror("socket");
                 return -1;
         }
-
         memset(&saddr, 0, sizeof(saddr));
         saddr.sin_family = AF_INET;
-        saddr.sin_addr.s_addr = htonl(INADDR_ANY);
         saddr.sin_port = htons(port);
+        if (strncmp(addr, "all", 3) == 0)
+        {
+                saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        }
+        else
+        {
+                uint32_t na;
 
+                if (inet_pton(AF_INET, addr, &na) < 0)
+                {
+                        perror("inet_pton");
+                        return -1;
+                }
+
+                saddr.sin_addr.s_addr = na;
+        }
         ret = bind(s, (struct sockaddr*)&saddr, sizeof(saddr));
         if (ret < 0)
         {
                 perror("bind");
-
                 return -1;
         }
 
-        printf("header size: %ld\n", sizeof(struct bhd_dns_h));
+        for (;;)
+        {
+                bhd_srv_serve_one(s, fs, &faddr);
+        }
+
+        return 0;
+}
+
+static int bhd_srv_serve_one(int s, int fs, struct sockaddr_in* faddr)
+{
+        unsigned char buf[BUF_LEN];
+        struct sockaddr_in caddr;
+        struct bhd_dns_h h;
+        struct bhd_dns_q_section qs;
+        size_t br;
+        ssize_t nb;
+        socklen_t slen;
 
         nb = recvfrom(s, buf, BUF_LEN, 0, (struct sockaddr*)&caddr, &slen);
         if (nb < 0)
         {
-                perror("recvfrom");
+                perror("client:recvfrom");
                 return -1;
         }
-        printf("Read %ld bytes from socket\n", nb);
-
-        struct bhd_dns_h h;
-        struct bhd_dns_q_section qs;
-        size_t br;
-        size_t tmp;
 
         br = bhd_dns_h_unpack(&h, buf);
-        bhd_dns_h_dump(&h);
-
         qs.qd_count = h.qd_count;
-        tmp = bhd_dns_q_section_unpack(&qs, buf + br);
-        if (tmp == 0)
-        {
-                abort();
-        }
-        br += tmp;
-
-        bhd_dns_q_section_dump(&qs);
-        printf("Unpacked %ld bytes\n", br);
+        br += bhd_dns_q_section_unpack(&qs, buf + br);
 
         if (br != (size_t)nb)
         {
                 printf("WARN:Did not unpack all data!\n");
+                return -1;
         }
 
-        bhd_dns_q_section_free(&qs);
+        nb = sendto(fs, buf, nb, 0, (struct sockaddr*)faddr, sizeof(struct sockaddr_in));
+        if (nb < 0)
+        {
+                perror("forward:sendto");
+                return -1;
+        }
 
-        return 1;
+        nb = recvfrom(fs, buf, BUF_LEN, 0, NULL, NULL);
+        if (nb < 0)
+        {
+                perror("forward:recvfrom");
+                return -1;
+        }
+        nb = sendto(s, buf, nb, 0, (struct sockaddr*)&caddr, sizeof(caddr));
+        if (nb < 0)
+        {
+                perror("client:sendto");
+        }
+
+        return 0;
+}
+
+void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)
+{
+        uint32_t na;
+
+        if (inet_pton(AF_INET, a, &na) < 0)
+        {
+                perror("inet_pton");
+        }
+
+        /* two MSB bits to 11, and offset of 12 */
+        /* 11000000 00001100 */
+        rr->name = 0xc00c;
+        rr->type = (uint16_t)BHD_DNS_QTYPE_A;
+        rr->class = (uint16_t)BHD_DNS_CLASS_IN;
+        rr->ttl = 86400; /* 24h */
+        rr->rdlength = 4;
+        rr->addr = na;
 }

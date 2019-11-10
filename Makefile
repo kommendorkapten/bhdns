@@ -10,13 +10,14 @@ CFLAGS  += $(CF_GCC)
 
 LNET     =-lnsl -lsocket
 #LNET     =
-LFLAGS = $(LNET)
+LFLAGS   = $(LNET)
 
 VPATH = lib
-DIRS = obj bin
+DIRS  = obj bin
 
 .PHONY: clean
 .PHONY: all
+
 ########################################################################
 
 all: bin/bhdns

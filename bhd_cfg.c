@@ -116,6 +116,16 @@ struct bhd_cfg* bhd_cfg_read(const char* p)
                         }
                         strncpy(cfg->bresp, d, vlen);
                 }
+                else if (strncmp("forward-addr", line, vlen) == 0)
+                {
+                        if (cfg->faddr[0])
+                        {
+                                printf("Multiple forward-addr declarations at line %d\n",
+                                       ln);
+                                continue;
+                        }
+                        strncpy(cfg->faddr, d, vlen);
+                }
 
         }
 

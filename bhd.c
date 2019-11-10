@@ -27,9 +27,6 @@ int main(int argc, char** argv)
                 }
         }
 
-        printf("Daemonize: %d\n", d);
-        printf("Cfg file: %s\n", cfgp);
-
         cfg = bhd_cfg_read(cfgp);
         if (!cfg)
         {
@@ -37,10 +34,7 @@ int main(int argc, char** argv)
                 return 1;
         }
 
-        printf("Listen on %s:%d\n", cfg->ifa, cfg->port);
-        printf("Resp: %s\n", cfg->bresp);
-
-        bhd_serve(cfg->ifa, cfg->port);
+        bhd_serve(cfg->faddr, cfg->ifa, cfg->port);
         free(cfg);
         return 0;
 }

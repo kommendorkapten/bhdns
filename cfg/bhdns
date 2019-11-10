@@ -7,3 +7,5 @@ if: ALL
 blist: /var/bhdns/blist
 # Response IP to respond with for blocked entries
 bresp: 127.0.0.12
+# Address of resolver
+forward-addr: 8.8.8.8

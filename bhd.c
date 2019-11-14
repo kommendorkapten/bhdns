@@ -3,11 +3,13 @@
 #include <unistd.h>
 #include "bhd_cfg.h"
 #include "bhd_srv.h"
+#include "bhd_bl.h"
 
 int main(int argc, char** argv)
 {
         char* cfgp = "/etc/bhdns";
         struct bhd_cfg* cfg;
+        struct bhd_bl* bl;
         int d = 0;
         int c;
 
@@ -34,7 +36,9 @@ int main(int argc, char** argv)
                 return 1;
         }
 
-        bhd_serve(cfg->faddr, cfg->ifa, cfg->port);
+        printf("Daemon: %d\n", d);
+        bl = bhd_bl_create(cfg->bp);
+        bhd_serve(cfg->faddr, cfg->ifa, cfg->port, bl);
         free(cfg);
         return 0;
 }

@@ -5,7 +5,7 @@ CF_GCC   = -std=c99 -pedantic -fstrict-aliasing \
 CF_CLANG = -std=c99 -pedantic -fstrict-aliasing \
            -Wextra -Wall -Wstrict-aliasing -Wconversion -Wno-sign-conversion
 #CF_C99   = -v -errwarn -mt -xalias_level=std
-CF_C99   = -v -mt -xalias_level=std
+CF_C99   = -v -mt -xalias_level=std -pedantic
 CFLAGS  += $(CF_GCC)
 
 LNET     =-lnsl -lsocket
@@ -30,7 +30,7 @@ $(DIRS):
 clean:
 	rm -rf bin/* obj/*
 
-bin/bhdns: bhd.c obj/bhd_cfg.o obj/strutil.o obj/bhd_srv.o obj/bhd_dns.o
+bin/bhdns: bhd.c obj/bhd_cfg.o obj/strutil.o obj/bhd_srv.o obj/bhd_dns.o obj/bhd_bl.o obj/hmap.o obj/stack.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
 
 obj/%.o: %.c

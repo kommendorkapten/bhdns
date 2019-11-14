@@ -17,7 +17,7 @@ struct bhd_cfg* bhd_cfg_read(const char* p)
         if (!f)
         {
                 printf("Failed to open '%s': \n", p);
-                perror("open");
+                perror("fopen");
                 return NULL;
         }
 
@@ -145,6 +145,8 @@ struct bhd_cfg* bhd_cfg_read(const char* p)
         {
                 strncpy(cfg->bresp, "0.0.0.0", STR_LEN-1);
         }
+
+        fclose(f);
 
         return cfg;
 }

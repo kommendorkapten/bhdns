@@ -6,22 +6,6 @@
 #include <arpa/inet.h>
 #include "bhd_dns.h"
 
-uint8_t bdh_ntohb(uint8_t v)
-{
-        uint8_t r;
-
-        r = (uint8_t)(
-                (v & 0x1) << 7 |
-                (v & 0x2) << 5 |
-                (v & 0x4) << 3 |
-                (v & 0x8) << 1 |
-                (v & 0x10) >> 1 |
-                (v & 0x20) >> 3 |
-                (v & 0x40) >> 5 |
-                (v & 0x80) >> 7);
-        return r;
-}
-
 struct bhd_dns_h_n
 {
         uint16_t hw1;
@@ -33,76 +17,85 @@ struct bhd_dns_h_n
         uint16_t hw6;
 };
 
-void bhd_dns_h_n_unpack(struct bhd_dns_h_n*, const unsigned char*);
-void bhd_dns_h_n_pack(unsigned char*, const struct bhd_dns_h_n*);
-
-void bhd_dns_h_n_unpack(struct bhd_dns_h_n* n, const unsigned char* buf)
-{
-        memcpy(&n->hw1, buf + 0, 2);
-        memcpy(&n->hw20, buf + 2, 1);
-        memcpy(&n->hw21, buf + 3, 1);
-        memcpy(&n->hw3, buf + 4, 2);
-        memcpy(&n->hw4, buf + 6, 2);
-        memcpy(&n->hw5, buf + 8, 2);
-        memcpy(&n->hw6, buf + 10, 2);
-}
-
-void bhd_dns_h_n_pack(unsigned char* buf, const struct bhd_dns_h_n* n)
-{
-        memcpy(buf + 0, &n->hw1, 2);
-        memcpy(buf + 2, &n->hw20, 1);
-        memcpy(buf + 3, &n->hw21, 1);
-        memcpy(buf + 4, &n->hw3, 2);
-        memcpy(buf + 6, &n->hw4, 2);
-        memcpy(buf + 8, &n->hw5, 2);
-        memcpy(buf + 10, &n->hw6, 2);
-}
-
 size_t bhd_dns_h_unpack(struct bhd_dns_h* h, const unsigned char* buf)
 {
-        struct bhd_dns_h_n nh;
+        uint16_t u16;
+        uint8_t u8;
 
-        assert(sizeof(struct bhd_dns_h_n) == sizeof(struct bhd_dns_h));
-        bhd_dns_h_n_unpack(&nh, buf);
+        memcpy(&u16, buf, 2);
+        h->id = ntohs(u16);
 
-        nh.hw1 = ntohs(nh.hw1);
-        nh.hw20 = bdh_ntohb(nh.hw20);
-        nh.hw21 = bdh_ntohb(nh.hw21);
-        nh.hw3 = ntohs(nh.hw3);
-        nh.hw4 = ntohs(nh.hw4);
-        nh.hw5 = ntohs(nh.hw5);
-        nh.hw6 = ntohs(nh.hw6);
+        memcpy(&u8, buf + 2, 1);
+        h->qr = (uint8_t)((u8 & 0x80) >> 7);
+        h->opcode = (uint8_t)((u8 & 0x78) >> 3);
+        h->tc = (uint8_t)((u8 & 0x2) >> 1);
+        h->rd = (uint8_t)((u8 & 0x1));
 
-        memcpy(h, &nh, sizeof(nh));
+        memcpy(&u8, buf + 3, 1);
+        h->ra = (uint8_t)((u8 & 0x80) >> 7);
+        h->z1 = (uint8_t)((u8 & 0x40) >> 6);
+        h->ad = (uint8_t)((u8 & 0x20) >> 5);
+        h->cd = (uint8_t)((u8 & 0x10) >> 4);
+        h->rcode = (uint8_t)(u8 & 0xf);
 
-        return sizeof(nh);
+        memcpy(&u16, buf + 4, 2);
+        h->qd_count = ntohs(u16);
+
+        memcpy(&u16, buf + 6, 2);
+        h->an_count = ntohs(u16);
+
+        memcpy(&u16, buf + 8, 2);
+        h->ns_count = ntohs(u16);
+
+        memcpy(&u16, buf + 10, 2);
+        h->ar_count = ntohs(u16);
+
+        return BHD_DNS_H_SIZE;
 }
 
 size_t bhd_dns_h_pack(unsigned char* buf,
                       size_t len,
                       const struct bhd_dns_h* h)
 {
-        struct bhd_dns_h_n nh;
+        uint16_t u16;
+        uint8_t u8;
 
-        if (len < sizeof(struct bhd_dns_h))
+        if (len < BHD_DNS_H_SIZE)
         {
                 return 0;
         }
 
-        assert(sizeof(struct bhd_dns_h_n) == sizeof(struct bhd_dns_h));
-        memcpy(&nh, h, sizeof(nh));
+        u16 = htons(h->id);
+        memcpy(buf, &u16, 2);
 
-        nh.hw1 = ntohs(nh.hw1);
-        nh.hw20 = bdh_ntohb(nh.hw20);
-        nh.hw21 = bdh_ntohb(nh.hw21);
-        nh.hw3 = ntohs(nh.hw3);
-        nh.hw4 = ntohs(nh.hw4);
-        nh.hw5 = ntohs(nh.hw5);
-        nh.hw6 = ntohs(nh.hw6);
+        u8 = 0;
+        u8 |= (uint8_t)((h->qr & 0x1) << 7);
+        u8 |= (uint8_t)((h->opcode & 0xf) << 3);
+        u8 |= (uint8_t)((h->tc & 0x1) << 1);
+        u8 |= (uint8_t)(h->rd & 0x1);
+        memcpy(buf + 2, &u8, 1);
 
-        bhd_dns_h_n_pack(buf, &nh);
+        u8 = 0;
+        u8 |= (uint8_t)((h->ra & 0x1) << 7);
+        u8 |= (uint8_t)((h->z1 & 0x1) << 6);
+        u8 |= (uint8_t)((h->ad & 0x1) << 5);
+        u8 |= (uint8_t)((h->cd & 0x1) << 4);
+        u8 |= (uint8_t)(h->rcode & 0xf);
+        memcpy(buf + 3, &u8, 1);
 
-        return sizeof(nh);
+        u16 = htons(h->qd_count);
+        memcpy(buf + 4, &u16, 2);
+
+        u16 = htons(h->an_count);
+        memcpy(buf + 6, &u16, 2);
+
+        u16 = htons(h->ns_count);
+        memcpy(buf + 8, &u16, 2);
+
+        u16 = htons(h->ar_count);
+        memcpy(buf + 10, &u16, 2);
+
+        return BHD_DNS_H_SIZE;
 }
 
 size_t bhd_dns_q_section_unpack(struct bhd_dns_q_section* qs,
@@ -206,8 +199,8 @@ size_t bhd_dns_q_unpack(struct bhd_dns_q* q, const unsigned char* buf)
 {
         struct bhd_dns_q_label* label = &q->qname;
         size_t br = 0;
-        uint8_t len;
         uint16_t v;
+        uint8_t len;
 
         /* See RFC 1035 4.1.2 for format */
         /* Format is 3www7openbsd3org */
@@ -309,13 +302,7 @@ size_t bhd_dns_q_pack(unsigned char* buf, size_t len, const struct bhd_dns_q* q)
 
 void bhd_dns_h_dump(const struct bhd_dns_h* h)
 {
-        struct bhd_dns_h_n nh;
-
-        memcpy(&nh, h, sizeof(nh));
-
         printf("id: %d\n", h->id);
-        printf("20: 0x%x\n", nh.hw20);
-        printf("21: 0x%x\n", nh.hw21);
 
         printf("qr: %d\n", h->qr);
         printf("opcode: %d\n", h->opcode);

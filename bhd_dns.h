@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define BHD_DNS_H_SIZE 12
+
 enum bhd_dns_h_opcode
 {
         BHD_DNS_OP_QUERY = 0,
@@ -40,6 +42,7 @@ enum bhd_dns_h_qclass
 };
 
 /* https://tools.ietf.org/html/rfc1035#section-4.1.1 */
+/* 12b */
 struct bhd_dns_h
 {
         /* 0 - 15 */
@@ -47,28 +50,28 @@ struct bhd_dns_h
         uint16_t id;
 
         /* 16 - 23 */
-        /* query/response flag */
-        uint8_t qr :1;
-        /* opcode */
-        uint8_t opcode :4;
-        /* authoritive answer */
-        uint8_t aa :1;
-        /* truncated message */
-        uint8_t tc :1;
-        /* recursion desired */
-        uint8_t rd :1;
+        /* query/response flag 1b*/
+        uint8_t qr;
+        /* opcode 4b*/
+        uint8_t opcode;
+        /* authoritive answer 1b*/
+        uint8_t aa;
+        /* truncated message 1b*/
+        uint8_t tc;
+        /* recursion desired 1b*/
+        uint8_t rd;
 
         /* 24 - 31 */
-        /* recursion available */
-        uint8_t ra :1;
-        /* reserved, set to 0 */
-        uint8_t z1 :1;
-        /* authenticated data */
-        uint8_t ad :1;
-        /* checking disabled */
-        uint8_t cd :1;
-        /* response code */
-        uint8_t rcode :4;
+        /* recursion available 1b*/
+        uint8_t ra;
+        /* reserved, set to 0, 1b */
+        uint8_t z1;
+        /* authenticated data 1b */
+        uint8_t ad;
+        /* checking disabled 1b*/
+        uint8_t cd;
+        /* response code 4b*/
+        uint8_t rcode;
 
         /* 32 - 47 */
         /* num entries in question section */

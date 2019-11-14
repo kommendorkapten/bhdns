@@ -4,8 +4,9 @@ port: 1337
 # Interface to listen on. Use 'all' for all interface (wildcard).
 if: ALL
 # Path to file with black listed domains/hosts.
-blist: /var/bhdns/blist
+#blist: /var/bhdns/blist
+blist: /export/home/skogman/git/bhdns/cfg/blist
 # Response IP to respond with for blocked entries
 bresp: 127.0.0.12
 # Address of resolver
-forward-addr: 8.8.8.8
+forward-addr: 1.1.1.1

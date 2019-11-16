@@ -39,15 +39,16 @@ struct bhd_bl* bhd_bl_create(const char* p)
         {
                 char* pos;
                 char* start = line;
-                count++;
                 line[MAX_LINE-1] = '\0';
                 strrstrip(line);
                 strlstrip(line);
 
-                if (line[0] == '#')
+                if ((line[0] == '#') || (strlen(line) < 1))
                 {
                         continue;
                 }
+
+                count++;
 
                 pos = strchr(line, '.');
                 while (pos)

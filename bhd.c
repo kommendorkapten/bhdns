@@ -8,7 +8,7 @@
 int main(int argc, char** argv)
 {
         char* cfgp = "/etc/bhdns";
-        struct bhd_cfg* cfg;
+        struct bhd_cfg cfg;
         struct bhd_bl* bl;
         int d = 0;
         int c;
@@ -29,16 +29,17 @@ int main(int argc, char** argv)
                 }
         }
 
-        cfg = bhd_cfg_read(cfgp);
-        if (!cfg)
+        c = bhd_cfg_read(&cfg, cfgp);
+        if (c)
         {
                 printf("No configuration found");
                 return 1;
         }
 
         printf("Daemon: %d\n", d);
-        bl = bhd_bl_create(cfg->bp);
-        bhd_serve(cfg->faddr, cfg->ifa, cfg->port, bl);
-        free(cfg);
+        bl = bhd_bl_create(cfg.bp);
+        bhd_serve(cfg.faddr, cfg.ifa, cfg.port, bl);
+        bhd_bl_free(bl);
+
         return 0;
 }

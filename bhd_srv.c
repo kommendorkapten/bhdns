@@ -156,31 +156,20 @@ static int bhd_srv_serve_one(int s,
                 {
                         /* Send static response */
                         struct bhd_dns_rr_a rr;
-                        size_t bw;
 
                         bhd_dns_rr_a_init(&rr, "0.0.0.0");
                         h.qr = 1;
                         h.ra = 1;
                         h.an_count = 1;
 
-                        bw = bhd_dns_h_pack(buf, BUF_LEN, &h);
-                        bw += bhd_dns_q_section_pack(buf + bw,
-                                                     BUF_LEN - bw,
+                        nb = bhd_dns_h_pack(buf, BUF_LEN, &h);
+                        nb += bhd_dns_q_section_pack(buf + nb,
+                                                     BUF_LEN - nb,
                                                      &qs);
-                        bw += bhd_dns_rr_a_pack(buf + bw,
-                                                BUF_LEN - bw,
+                        nb += bhd_dns_rr_a_pack(buf + nb,
+                                                BUF_LEN - nb,
                                                 &rr);
-                        nb = sendto(s,
-                                    buf,
-                                    bw,
-                                    0,
-                                    (struct sockaddr*)&caddr,
-                                    sizeof(caddr));
-                        if (nb < 0)
-                        {
-                                perror("client:sendto");
-                        }
-                        return 0;
+                        goto do_respond;
                 }
 
         }
@@ -201,6 +190,7 @@ static int bhd_srv_serve_one(int s,
                 return -1;
         }
 
+do_respond:
         /* Add timeout */
         nb = sendto(s, buf, nb, 0, (struct sockaddr*)&caddr, sizeof(caddr));
         if (nb < 0)

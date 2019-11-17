@@ -40,7 +40,6 @@ struct bhd_bl* bhd_bl_create(const char* p)
         {
                 char* pos;
                 char* start = line;
-                count++;
                 line[MAX_LINE-1] = '\0';
                 strrstrip(line);
                 strlstrip(line);
@@ -50,6 +49,7 @@ struct bhd_bl* bhd_bl_create(const char* p)
                         continue;
                 }
 
+                count++;
                 pos = strchr(line, '.');
                 while (pos)
                 {
@@ -136,7 +136,33 @@ int bhd_bl_match(struct bhd_bl* bl, const struct bhd_dns_q_label* label)
 
 void bhd_bl_free(struct bhd_bl* bl)
 {
-        (void) bl;
+        if (!bl)
+        {
+                return;
+        }
+
+        struct hmap_entry* d;
+        struct stack* s = stack_create(256, STACK_AUTO_EXPAND);
+        size_t cnt;
+
+        /* each entry is key: label, and data: hmap */
+        stack_push(s, bl->tree);
+
+        while (stack_size(s))
+        {
+                struct hmap* h = (struct hmap*)stack_pop(s);
+
+                d = hmap_iter(h, &cnt);
+                for (size_t i = 0; i < cnt; i++)
+                {
+                        free((void*)d[i].key);
+                        stack_push(s, d[i].data);
+                }
+                free(d);
+                hmap_destroy(h);
+        }
+        stack_destroy(s);
+        free(bl);
 }
 
 static int bhd_bl_add_labels(struct bhd_bl* bl, struct stack* s)

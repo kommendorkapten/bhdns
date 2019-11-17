@@ -1,19 +1,18 @@
-CC       = gcc
-CFLAGS   = -D_POSIX_C_SOURCE=200112L -O3 -g -m64
+CC       = c99
+CFLAGS   = -D_POSIX_C_SOURCE=200112L -g -m64 -O3
 CF_GCC   = -std=c99 -pedantic -fstrict-aliasing \
            -Wextra -Wall -Wstrict-aliasing -Wconversion -Wno-sign-conversion
 CF_CLANG = -std=c99 -pedantic -fstrict-aliasing \
            -Wextra -Wall -Wstrict-aliasing -Wconversion -Wno-sign-conversion
-#CF_C99   = -v -errwarn -mt -xalias_level=std
-CF_C99   = -v -mt -xalias_level=std -pedantic
-CFLAGS  += $(CF_GCC)
+CF_C99   = -v -errwarn -mt -xalias_level=std
+CFLAGS  += $(CF_C99)
 
 LNET     =-lnsl -lsocket
 #LNET     =
 LFLAGS   = $(LNET)
 
 VPATH = lib
-DIRS  = obj bin
+DIRS  = bin
 
 .PHONY: clean
 .PHONY: all
@@ -28,10 +27,10 @@ $(DIRS):
 	mkdir $(DIRS)
 
 clean:
-	rm -rf bin/* obj/*
+	rm -rf bin/* *.o
 
-bin/bhdns: bhd.c obj/bhd_cfg.o obj/strutil.o obj/bhd_srv.o obj/bhd_dns.o obj/bhd_bl.o obj/hmap.o obj/stack.o
+bin/bhdns: bhd.c bhd_cfg.o strutil.o bhd_srv.o bhd_dns.o bhd_bl.o hmap.o stack.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
 
-obj/%.o: %.c
+.c.o:
 	$(CC) $(CFLAGS) -c $< -o $@

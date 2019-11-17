@@ -10,11 +10,20 @@
 #include "bhd_dns.h"
 #include "bhd_bl.h"
 
+struct bhd_stats
+{
+        size_t numf;
+        size_t numb;
+};
+
 /* Max UDP message size from RFC1035 */
 #define BUF_LEN 512
 sig_atomic_t run;
 
 void bhd_dns_rr_a_init(struct bhd_dns_rr_a*, const char*);
+/**
+ * Return 0 if request was forwarded, 1 if blocked and -1 on error.
+ */
 static int bhd_srv_serve_one(int, int, struct sockaddr_in*, struct bhd_bl*);
 
 static void sigh(int);
@@ -27,6 +36,7 @@ int bhd_serve(const char* pfaddr,
         struct sockaddr_in saddr;
         struct sockaddr_in faddr;
         struct sigaction sa;
+        struct bhd_stats stats = {.numf = 0, .numb = 0};
         int s;
         int fs;
         int ret;
@@ -93,10 +103,24 @@ int bhd_serve(const char* pfaddr,
 
         while(run)
         {
-                bhd_srv_serve_one(s, fs, &faddr, bl);
+                int ret = bhd_srv_serve_one(s, fs, &faddr, bl);
+
+                switch (ret)
+                {
+                case 0:
+                        stats.numf++;
+                        break;
+                case 1:
+                        stats.numb++;
+                        break;
+                default:
+                        printf("Failed\n");
+                }
         }
 
         printf("Stop listening\n");
+        printf("Forwarded %ld requests\n", stats.numf);
+        printf("Blocked %ld requests\n", stats.numb);
 
         close(s);
         close(fs);
@@ -117,6 +141,7 @@ static int bhd_srv_serve_one(int s,
         size_t offset = 0;
         ssize_t nb;
         socklen_t slen = sizeof(caddr);
+        int ret = 0;
 
         nb = recvfrom(s, buf, BUF_LEN, 0, (struct sockaddr*)&caddr, &slen);
         if (nb < 0)
@@ -169,6 +194,8 @@ static int bhd_srv_serve_one(int s,
                         nb += bhd_dns_rr_a_pack(buf + nb,
                                                 BUF_LEN - nb,
                                                 &rr);
+
+                        ret = 1;
                         goto do_respond;
                 }
 
@@ -200,7 +227,7 @@ do_respond:
 
         bhd_dns_q_section_free(&qs);
 
-        return 0;
+        return ret;
 }
 
 void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)
@@ -224,5 +251,6 @@ void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)
 
 static void sigh(int signum)
 {
+        (void)signum;
         run = 0;
 }

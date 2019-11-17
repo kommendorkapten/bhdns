@@ -4,15 +4,20 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <unistd.h>
+#include <signal.h>
 #include "bhd_srv.h"
 #include "bhd_dns.h"
 #include "bhd_bl.h"
 
 /* Max UDP message size from RFC1035 */
 #define BUF_LEN 512
+sig_atomic_t run;
 
 void bhd_dns_rr_a_init(struct bhd_dns_rr_a*, const char*);
 static int bhd_srv_serve_one(int, int, struct sockaddr_in*, struct bhd_bl*);
+
+static void sigh(int);
 
 int bhd_serve(const char* pfaddr,
               const char* addr,
@@ -21,10 +26,21 @@ int bhd_serve(const char* pfaddr,
 {
         struct sockaddr_in saddr;
         struct sockaddr_in faddr;
+        struct sigaction sa;
         int s;
         int fs;
         int ret;
 
+        sa.sa_flags = 0;
+        sa.sa_handler = &sigh;
+        sigfillset(&sa.sa_mask);
+
+        if (sigaction(SIGINT, &sa, NULL))
+        {
+                perror("sigaction");
+        }
+
+        run = 1;
         /* Set up forward address */
         printf("Forward address: %s\n", pfaddr);
         fs = socket(AF_INET, SOCK_DGRAM, 0);
@@ -75,10 +91,15 @@ int bhd_serve(const char* pfaddr,
                 return -1;
         }
 
-        for (;;)
+        while(run)
         {
                 bhd_srv_serve_one(s, fs, &faddr, bl);
         }
+
+        printf("Stop listening\n");
+
+        close(s);
+        close(fs);
 
         return 0;
 }
@@ -187,6 +208,8 @@ static int bhd_srv_serve_one(int s,
                 perror("client:sendto");
         }
 
+        bhd_dns_q_section_free(&qs);
+
         return 0;
 }
 
@@ -207,4 +230,9 @@ void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)
         rr->ttl = 86400; /* 24h */
         rr->rdlength = 4;
         rr->addr = na;
+}
+
+static void sigh(int signum)
+{
+        run = 0;
 }

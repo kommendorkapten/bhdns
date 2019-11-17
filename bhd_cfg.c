@@ -7,10 +7,9 @@
 
 #define MAX_LINE 512
 
-struct bhd_cfg* bhd_cfg_read(const char* p)
+int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
 {
         char line[MAX_LINE];
-        struct bhd_cfg* cfg = NULL;
         FILE* f;
 
         f = fopen(p, "r");
@@ -18,15 +17,9 @@ struct bhd_cfg* bhd_cfg_read(const char* p)
         {
                 printf("Failed to open '%s': \n", p);
                 perror("fopen");
-                return NULL;
+                return -1;
         }
 
-        cfg = malloc(sizeof(struct bhd_cfg));
-        if (!cfg)
-        {
-                perror("malloc");
-                return NULL;
-        }
         memset(cfg, 0, sizeof(struct bhd_cfg));
 
         int ln = 0;
@@ -148,5 +141,5 @@ struct bhd_cfg* bhd_cfg_read(const char* p)
 
         fclose(f);
 
-        return cfg;
+        return 0;
 }

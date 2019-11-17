@@ -20,7 +20,7 @@ struct bhd_bl* bhd_bl_create(const char* p)
 {
         char line[MAX_LINE];
         FILE* f;
-        struct bhd_bl* bl = malloc(sizeof(struct bhd_bl));
+        struct bhd_bl* bl;
         int count = 0;
         struct stack* s;
 
@@ -32,6 +32,7 @@ struct bhd_bl* bhd_bl_create(const char* p)
                 return NULL;
         }
 
+        bl = malloc(sizeof(struct bhd_bl));
         bl->tree = hmap_create(NULL, NULL, 16, 0.7f);
         s = stack_create(10, STACK_AUTO_EXPAND);
 
@@ -82,10 +83,16 @@ struct bhd_bl* bhd_bl_create(const char* p)
 
 int bhd_bl_match(struct bhd_bl* bl, const struct bhd_dns_q_label* label)
 {
-        struct stack* s = stack_create(8, STACK_AUTO_EXPAND);
+        struct stack* s;
         char* l;
         int ret = 1;
 
+        if (!bl)
+        {
+                return 0;
+        }
+
+        s = stack_create(8, STACK_AUTO_EXPAND);
         while(label)
         {
                 stack_push(s, label->label);

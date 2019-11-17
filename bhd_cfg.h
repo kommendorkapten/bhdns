@@ -16,9 +16,10 @@ struct bhd_cfg
 
 /**
  * Open a config file for reading, fill create a cfg struct and return.
+ * @params config struct to populate.
  * @params path to the file to open.
- * @return a bhd_cfg struct created on the heap. NULL if errors occured.
+ * @return 0 on sucess.
  */
-struct bhd_cfg* bhd_cfg_read(const char*);
+int bhd_cfg_read(struct bhd_cfg*, const char*);
 
 #endif/* __BHD_CFG_H__ */

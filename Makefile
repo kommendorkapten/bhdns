@@ -29,7 +29,7 @@ $(DIRS):
 clean:
 	rm -rf bin/* *.o
 
-bin/bhdns: bhd.c bhd_cfg.o strutil.o bhd_srv.o bhd_dns.o bhd_bl.o hmap.o stack.o
+bin/bhdns: bhd.c bhd_cfg.o strutil.o bhd_srv.o bhd_dns.o bhd_bl.o hmap.o stack.o timing.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LFLAGS)
 
 .c.o:

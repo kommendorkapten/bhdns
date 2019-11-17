@@ -6,6 +6,7 @@
 #include "lib/hmap.h"
 #include "lib/strutil.h"
 #include "lib/stack.h"
+#include "lib/timing.h"
 
 struct bhd_bl
 {
@@ -19,11 +20,13 @@ static int bhd_bl_add_labels(struct bhd_bl*, struct stack*);
 struct bhd_bl* bhd_bl_create(const char* p)
 {
         char line[MAX_LINE];
+        struct timing t;
         FILE* f;
         struct bhd_bl* bl;
         int count = 0;
         struct stack* s;
 
+        timing_start(&t);
         f = fopen(p, "r");
         if (!f)
         {
@@ -76,7 +79,7 @@ struct bhd_bl* bhd_bl_create(const char* p)
 
         fclose(f);
         stack_destroy(s);
-        printf("added %d items\n", count);
+        printf("added %d items in %dms\n", count, timing_dur_msec(&t));
 
         return bl;
 }

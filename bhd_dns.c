@@ -6,17 +6,6 @@
 #include <arpa/inet.h>
 #include "bhd_dns.h"
 
-struct bhd_dns_h_n
-{
-        uint16_t hw1;
-        uint8_t hw20;
-        uint8_t hw21;
-        uint16_t hw3;
-        uint16_t hw4;
-        uint16_t hw5;
-        uint16_t hw6;
-};
-
 size_t bhd_dns_h_unpack(struct bhd_dns_h* h, const unsigned char* buf)
 {
         uint16_t u16;
@@ -350,7 +339,7 @@ void bhd_dns_q_dump(const struct bhd_dns_q* q)
                 {
                         first = 0;
                 }
-                printf(label->label);
+                printf("label: %s\n",label->label);
         }
         printf("\nqtype: %d\nqclass: %d\n", q->qtype, q->qclass);
 }

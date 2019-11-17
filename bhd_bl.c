@@ -79,7 +79,7 @@ struct bhd_bl* bhd_bl_create(const char* p)
 
         fclose(f);
         stack_destroy(s);
-        printf("added %d items in %dms\n", count, timing_dur_msec(&t));
+        printf("added %d items in %ldms\n", count, timing_dur_msec(&t));
 
         return bl;
 }

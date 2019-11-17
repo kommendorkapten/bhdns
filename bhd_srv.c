@@ -234,5 +234,6 @@ void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)
 
 static void sigh(int signum)
 {
+        (void)signum;
         run = 0;
 }

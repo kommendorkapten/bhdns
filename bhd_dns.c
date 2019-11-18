@@ -194,6 +194,10 @@ size_t bhd_dns_q_unpack(struct bhd_dns_q* q, const unsigned char* buf)
         /* See RFC 1035 4.1.2 for format */
         /* Format is 3www7openbsd3org */
         len = *buf;
+        if (len > BHD_DNS_MAX_LABEL)
+        {
+                return 0;
+        }
         br++;
         for (;;)
         {
@@ -207,8 +211,11 @@ size_t bhd_dns_q_unpack(struct bhd_dns_q* q, const unsigned char* buf)
 
                 br += len;
                 len = *(buf + br++);
-
-                if (len == 0)
+                if (len > BHD_DNS_MAX_LABEL)
+                {
+                        goto bailout;
+                }
+                else if (len == 0)
                 {
                         label->next = NULL;
                         break;

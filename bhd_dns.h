@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define BHD_DNS_H_SIZE 12
+#define BHD_DNS_MAX_LABEL 63
 
 enum bhd_dns_h_opcode
 {

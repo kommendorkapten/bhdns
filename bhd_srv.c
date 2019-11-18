@@ -14,6 +14,10 @@ struct bhd_stats
 {
         size_t numf;
         size_t numb;
+        size_t up_tx;
+        size_t up_rx;
+        size_t down_tx;
+        size_t down_rx;
 };
 
 /* Max UDP message size from RFC1035 */
@@ -22,9 +26,13 @@ sig_atomic_t run;
 
 void bhd_dns_rr_a_init(struct bhd_dns_rr_a*, const char*);
 /**
- * Return 0 if request was forwarded, 1 if blocked and -1 on error.
+ * Return 0 if successful.
  */
-static int bhd_srv_serve_one(int, int, struct sockaddr_in*, struct bhd_bl*);
+static int bhd_srv_serve_one(int,
+                             int,
+                             struct sockaddr_in*,
+                             struct bhd_bl*,
+                             struct bhd_stats*);
 
 static void sigh(int);
 
@@ -36,7 +44,12 @@ int bhd_serve(const char* pfaddr,
         struct sockaddr_in saddr;
         struct sockaddr_in faddr;
         struct sigaction sa;
-        struct bhd_stats stats = {.numf = 0, .numb = 0};
+        struct bhd_stats stats = {.numf = 0,
+                                  .numb = 0,
+                                  .up_tx = 0,
+                                  .up_rx = 0,
+                                  .down_tx = 0,
+                                  .down_rx = 0};
         int s;
         int fs;
         int ret;
@@ -103,24 +116,20 @@ int bhd_serve(const char* pfaddr,
 
         while(run)
         {
-                int ret = bhd_srv_serve_one(s, fs, &faddr, bl);
-
-                switch (ret)
+                ret = bhd_srv_serve_one(s, fs, &faddr, bl, &stats);
+                if (ret)
                 {
-                case 0:
-                        stats.numf++;
-                        break;
-                case 1:
-                        stats.numb++;
-                        break;
-                default:
-                        printf("Failed\n");
+                        printf("failed\n");
                 }
         }
 
         printf("Stop listening\n");
         printf("Forwarded %ld requests\n", stats.numf);
         printf("Blocked %ld requests\n", stats.numb);
+        printf("Upstream tx %ld bytes\n", stats.up_tx);
+        printf("Upstream rx %ld bytes\n", stats.up_rx);
+        printf("Downstream tx %ld bytes\n", stats.down_tx);
+        printf("Dowmstream rx %ld bytes\n", stats.down_rx);
 
         close(s);
         close(fs);
@@ -131,7 +140,8 @@ int bhd_serve(const char* pfaddr,
 static int bhd_srv_serve_one(int s,
                              int fs,
                              struct sockaddr_in* faddr,
-                             struct bhd_bl* bl)
+                             struct bhd_bl* bl,
+                             struct bhd_stats* stats)
 {
         unsigned char buf[BUF_LEN];
         struct sockaddr_in caddr;
@@ -141,7 +151,6 @@ static int bhd_srv_serve_one(int s,
         size_t offset = 0;
         ssize_t nb;
         socklen_t slen = sizeof(caddr);
-        int ret = 0;
 
         nb = recvfrom(s, buf, BUF_LEN, 0, (struct sockaddr*)&caddr, &slen);
         if (nb < 0)
@@ -150,6 +159,7 @@ static int bhd_srv_serve_one(int s,
                 return -1;
         }
 
+        stats->down_rx += nb;
         if (nb < BHD_DNS_H_SIZE)
         {
                 printf("Read %ld bytes, expected %d\n", nb, BHD_DNS_H_SIZE);
@@ -195,12 +205,13 @@ static int bhd_srv_serve_one(int s,
                                                 BUF_LEN - nb,
                                                 &rr);
 
-                        ret = 1;
+                        stats->numb++;
                         goto do_respond;
                 }
 
         }
 
+        stats->numf++;
         /* Add timeout */
         nb = sendto(fs, buf, nb, 0, (struct sockaddr*)faddr, sizeof(struct sockaddr_in));
         if (nb < 0)
@@ -208,6 +219,7 @@ static int bhd_srv_serve_one(int s,
                 perror("forward:sendto");
                 return -1;
         }
+        stats->up_tx += nb;
 
         /* Add timeout */
         nb = recvfrom(fs, buf, BUF_LEN, 0, NULL, NULL);
@@ -216,6 +228,7 @@ static int bhd_srv_serve_one(int s,
                 perror("forward:recvfrom");
                 return -1;
         }
+        stats->up_rx += nb;
 
 do_respond:
         /* Add timeout */
@@ -223,11 +236,13 @@ do_respond:
         if (nb < 0)
         {
                 perror("client:sendto");
+                return -1;
         }
 
+        stats->down_tx += nb;
         bhd_dns_q_section_free(&qs);
 
-        return ret;
+        return 0;
 }
 
 void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)

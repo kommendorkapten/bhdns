@@ -38,7 +38,7 @@ int main(int argc, char** argv)
 
         printf("Daemon: %d\n", d);
         bl = bhd_bl_create(cfg.bp);
-        bhd_serve(cfg.faddr, cfg.ifa, cfg.port, bl);
+        bhd_serve(&cfg, bl);
         bhd_bl_free(bl);
 
         return 0;

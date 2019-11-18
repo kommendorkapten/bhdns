@@ -9,6 +9,7 @@
 #include "bhd_srv.h"
 #include "bhd_dns.h"
 #include "bhd_bl.h"
+#include "bhd_cfg.h"
 
 struct bhd_stats
 {
@@ -32,13 +33,12 @@ static int bhd_srv_serve_one(int,
                              int,
                              struct sockaddr_in*,
                              struct bhd_bl*,
-                             struct bhd_stats*);
+                             struct bhd_stats*,
+                             const char*);
 
 static void sigh(int);
 
-int bhd_serve(const char* pfaddr,
-              const char* addr,
-              uint16_t port,
+int bhd_serve(const struct bhd_cfg* cfg,
               struct bhd_bl* bl)
 {
         struct sockaddr_in saddr;
@@ -65,7 +65,7 @@ int bhd_serve(const char* pfaddr,
 
         run = 1;
         /* Set up forward address */
-        printf("Forward address: %s\n", pfaddr);
+        printf("Forward address: %s\n", cfg->faddr);
         fs = socket(AF_INET, SOCK_DGRAM, 0);
         if (fs < 0)
         {
@@ -75,7 +75,7 @@ int bhd_serve(const char* pfaddr,
         memset(&faddr, 0, sizeof(faddr));
         faddr.sin_family = AF_INET;
         faddr.sin_port = htons(53);
-        if (inet_pton(AF_INET, pfaddr, &faddr.sin_addr) < 0)
+        if (inet_pton(AF_INET, cfg->faddr, &faddr.sin_addr) < 0)
         {
                 perror("inet_pton");
                 return -1;
@@ -90,8 +90,8 @@ int bhd_serve(const char* pfaddr,
         }
         memset(&saddr, 0, sizeof(saddr));
         saddr.sin_family = AF_INET;
-        saddr.sin_port = htons(port);
-        if (strncmp(addr, "all", 3) == 0)
+        saddr.sin_port = htons(cfg->port);
+        if (strncmp(cfg->ifa, "all", 3) == 0)
         {
                 saddr.sin_addr.s_addr = htonl(INADDR_ANY);
         }
@@ -99,7 +99,7 @@ int bhd_serve(const char* pfaddr,
         {
                 uint32_t na;
 
-                if (inet_pton(AF_INET, addr, &na) < 0)
+                if (inet_pton(AF_INET, cfg->ifa, &na) < 0)
                 {
                         perror("inet_pton");
                         return -1;
@@ -116,7 +116,7 @@ int bhd_serve(const char* pfaddr,
 
         while(run)
         {
-                ret = bhd_srv_serve_one(s, fs, &faddr, bl, &stats);
+                ret = bhd_srv_serve_one(s, fs, &faddr, bl, &stats, cfg->baddr);
                 if (ret)
                 {
                         printf("failed\n");
@@ -141,7 +141,8 @@ static int bhd_srv_serve_one(int s,
                              int fs,
                              struct sockaddr_in* faddr,
                              struct bhd_bl* bl,
-                             struct bhd_stats* stats)
+                             struct bhd_stats* stats,
+                             const char* baddr)
 {
         unsigned char buf[BUF_LEN];
         struct sockaddr_in caddr;
@@ -192,7 +193,7 @@ static int bhd_srv_serve_one(int s,
                         /* Send static response */
                         struct bhd_dns_rr_a rr;
 
-                        bhd_dns_rr_a_init(&rr, "0.0.0.0");
+                        bhd_dns_rr_a_init(&rr, baddr);
                         h.qr = 1;
                         h.ra = 1;
                         h.an_count = 1;

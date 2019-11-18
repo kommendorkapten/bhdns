@@ -101,13 +101,13 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                 }
                 else if (strncmp("bresp", line, vlen) == 0)
                 {
-                        if (cfg->bresp[0])
+                        if (cfg->baddr[0])
                         {
                                 printf("Multiple bresp declarations at line %d\n",
                                        ln);
                                 continue;
                         }
-                        strncpy(cfg->bresp, d, vlen);
+                        strncpy(cfg->baddr, d, vlen);
                 }
                 else if (strncmp("forward-addr", line, vlen) == 0)
                 {
@@ -134,9 +134,9 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
         {
                 strncpy(cfg->bp, "/var/bhdns/blist", STR_LEN-1);
         }
-        if (!cfg->bresp[0])
+        if (!cfg->baddr[0])
         {
-                strncpy(cfg->bresp, "0.0.0.0", STR_LEN-1);
+                strncpy(cfg->baddr, "0.0.0.0", STR_LEN-1);
         }
 
         fclose(f);

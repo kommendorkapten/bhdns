@@ -6,7 +6,7 @@
 * Development and Distribution License (the "License"). You may not use this
 * file except in compliance with the License. You can obtain a copy of the
 * License at http://opensource.org/licenses/CDDL-1.0. See the License for the
-* specific language governing permissions and limitations under the License. 
+* specific language governing permissions and limitations under the License.
 * When distributing the software, include this License Header Notice in each
 * file and include the License file at http://opensource.org/licenses/CDDL-1.0.
 */
@@ -24,7 +24,7 @@ struct stack;
  * Create a stack.
  * @param the initial capacity.
  * @param flags
- * @return the stack
+ * @return the stack or NULL.
  */
 struct stack* stack_create(size_t, unsigned int);
 

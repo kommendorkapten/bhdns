@@ -95,6 +95,10 @@ struct hmap* hmap_create(hmap_hash hfn, hmap_cmp cfn, size_t cap, float lf)
 {
         struct hmap* h = malloc(sizeof(struct hmap));
 
+        if (!h)
+        {
+                return NULL;
+        }
         if (hfn == NULL)
         {
                 hfn = &hmap_default_hash;
@@ -108,6 +112,11 @@ struct hmap* hmap_create(hmap_hash hfn, hmap_cmp cfn, size_t cap, float lf)
         h->cfn = cfn;
         h->cap = cap;
         h->elems = malloc(cap * sizeof(struct hmap_node));
+        if (!h->elems)
+        {
+                free(h);
+                return NULL;
+        }
         h->size = 0;
         h->lfactor = lf;
         memset(h->elems, 0, cap * sizeof(struct hmap_node));
@@ -126,7 +135,7 @@ void hmap_destroy(struct hmap* h)
         free(h);
 }
 
-void hmap_set(struct hmap* h, const void* key, void* data)
+int hmap_set(struct hmap* h, const void* key, void* data)
 {
         uint32_t k = h->hfn(key);
         size_t spos = k % h->cap;
@@ -185,6 +194,10 @@ void hmap_set(struct hmap* h, const void* key, void* data)
                         size_t new_s = h->cap * sizeof(struct hmap_node);
 
                         new = malloc(new_s);
+                        if (!new)
+                        {
+                                return -1;
+                        }
                         memset(new, 0, new_s);
 
                         old = h->elems;
@@ -201,6 +214,7 @@ void hmap_set(struct hmap* h, const void* key, void* data)
                         free(old);
                 }
         }
+        return 0;
 }
 
 void* hmap_get(const struct hmap* h, const void* key)
@@ -307,6 +321,11 @@ struct hmap_entry* hmap_iter(const struct hmap* h, size_t* size)
 {
         struct hmap_entry* e = malloc(h->size * sizeof(struct hmap_entry));
         size_t p = 0;
+
+        if (!e)
+        {
+                return NULL;
+        }
 
         for (size_t i = 0; i < h->cap; i++)
         {

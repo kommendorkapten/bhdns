@@ -6,7 +6,7 @@
 * Development and Distribution License (the "License"). You may not use this
 * file except in compliance with the License. You can obtain a copy of the
 * License at http://opensource.org/licenses/CDDL-1.0. See the License for the
-* specific language governing permissions and limitations under the License. 
+* specific language governing permissions and limitations under the License.
 * When distributing the software, include this License Header Notice in each
 * file and include the License file at http://opensource.org/licenses/CDDL-1.0.
 */
@@ -26,7 +26,17 @@ struct stack* stack_create(size_t cap, unsigned int flags)
 {
         struct stack* s = malloc(sizeof(struct stack));
 
+        if (!s)
+        {
+                return NULL;
+        }
+
         s->stack = malloc(cap * sizeof(void*));
+        if (!s->stack)
+        {
+                free(s);
+                return NULL;
+        }
         s->cap = cap;
         s->pos = 0;
         s->flags = flags;
@@ -41,7 +51,7 @@ int stack_push(struct stack* s, void* d)
                 /* Stack is full */
                 if (s->flags & STACK_AUTO_EXPAND)
                 {
-                        void** new = realloc(s->stack, 
+                        void** new = realloc(s->stack,
                                              s->cap * 2 * sizeof(void*));
 
                         if (new == NULL)
@@ -51,7 +61,7 @@ int stack_push(struct stack* s, void* d)
                         s->stack = new;
                         s->cap = 2 * s->cap;
                 }
-                else 
+                else
                 {
                         return 1;
                 }
@@ -70,7 +80,7 @@ void* stack_pop(struct stack* s)
         {
                 ret = s->stack[--s->pos];
         }
-        else 
+        else
         {
                 ret = NULL;
         }

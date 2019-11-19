@@ -53,7 +53,7 @@ struct hmap_entry
  *        is used.
  * @param the initial capacity.
  * @param the max load factor.
- * @return an empty hash table.
+ * @return an empty hash table, or NULL if error occured.
  */
 struct hmap* hmap_create(hmap_hash, hmap_cmp, size_t, float);
 
@@ -83,9 +83,9 @@ void hmap_destroy(struct hmap*);
  * @param the hash table to update.
  * @param the key.
  * @param the value to insert.
- * @return void.
+ * @return 0 if element was added. -1 otherwise.
  */
-void hmap_set(struct hmap*, const void* key, void* data);
+int hmap_set(struct hmap*, const void* key, void* data);
 
 /**
  * Retrieve a value from the hash table. If no data is found for the
@@ -126,7 +126,7 @@ size_t hmap_cap(const struct hmap*);
  * used.
  * @param the hash table.
  * @param pointer where the number of elements are written.
- * @return the array of elements.
+ * @return the array of elements or NULL if error occured.
  */
 struct hmap_entry* hmap_iter(const struct hmap*, size_t*);
 

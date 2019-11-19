@@ -100,6 +100,7 @@ size_t bhd_dns_q_section_unpack(struct bhd_dns_q_section* qs,
         qs->q = malloc(sizeof(struct bhd_dns_q) * qs->qd_count);
         if (!qs->q)
         {
+                printf("WARN: could not allocate memory\n");
                 return 0;
         }
 
@@ -204,6 +205,7 @@ size_t bhd_dns_q_unpack(struct bhd_dns_q* q, const unsigned char* buf)
                 label->label = malloc(len + 1);
                 if (!label->label)
                 {
+                        printf("WARN:could not allocate memory\n");
                         goto bailout;
                 }
                 memcpy(label->label, buf + br, len);
@@ -223,6 +225,7 @@ size_t bhd_dns_q_unpack(struct bhd_dns_q* q, const unsigned char* buf)
                 label->next = malloc(sizeof(struct bhd_dns_q_label));
                 if (!label->next)
                 {
+                        printf("WARN:could not allocate memory\n");
                         goto bailout;
                 }
                 label = label->next;

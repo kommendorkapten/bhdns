@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <signal.h>
+#include <syslog.h>
 #include "bhd_srv.h"
 #include "bhd_dns.h"
 #include "bhd_bl.h"
@@ -60,16 +61,16 @@ int bhd_serve(const struct bhd_cfg* cfg,
 
         if (sigaction(SIGINT, &sa, NULL))
         {
-                perror("sigaction");
+                syslog(LOG_WARNING, "Failed to install sighandler %m");
         }
 
         run = 1;
         /* Set up forward address */
-        printf("Forward address: %s\n", cfg->faddr);
+        syslog(LOG_INFO, "Forward address: %s", cfg->faddr);
         fs = socket(AF_INET, SOCK_DGRAM, 0);
         if (fs < 0)
         {
-                perror("socket");
+                syslog(LOG_ERR, "Could not create socket: %m");
                 return -1;
         }
         memset(&faddr, 0, sizeof(faddr));
@@ -77,7 +78,7 @@ int bhd_serve(const struct bhd_cfg* cfg,
         faddr.sin_port = htons(53);
         if (inet_pton(AF_INET, cfg->faddr, &faddr.sin_addr) < 0)
         {
-                perror("inet_pton");
+                syslog(LOG_ERR, "Invalid address '%s': %m", cfg->faddr);
                 return -1;
         }
 
@@ -85,7 +86,7 @@ int bhd_serve(const struct bhd_cfg* cfg,
         s = socket(AF_INET, SOCK_DGRAM, 0);
         if (s < 0)
         {
-                perror("socket");
+                syslog(LOG_ERR, "Could not create socket: %m");
                 return -1;
         }
         memset(&saddr, 0, sizeof(saddr));
@@ -101,7 +102,7 @@ int bhd_serve(const struct bhd_cfg* cfg,
 
                 if (inet_pton(AF_INET, cfg->ifa, &na) < 0)
                 {
-                        perror("inet_pton");
+                        syslog(LOG_ERR, "Invalid address '%s': %m", cfg->ifa);
                         return -1;
                 }
 
@@ -110,7 +111,7 @@ int bhd_serve(const struct bhd_cfg* cfg,
         ret = bind(s, (struct sockaddr*)&saddr, sizeof(saddr));
         if (ret < 0)
         {
-                perror("bind");
+                syslog(LOG_ERR, "Failed to bind: %m");
                 return -1;
         }
 
@@ -119,7 +120,7 @@ int bhd_serve(const struct bhd_cfg* cfg,
                 ret = bhd_srv_serve_one(s, fs, &faddr, bl, &stats, cfg->baddr);
                 if (ret)
                 {
-                        printf("failed\n");
+                        syslog(LOG_WARNING, "DNS action failed");
                 }
         }
 
@@ -156,14 +157,17 @@ static int bhd_srv_serve_one(int s,
         nb = recvfrom(s, buf, BUF_LEN, 0, (struct sockaddr*)&caddr, &slen);
         if (nb < 0)
         {
-                perror("client:recvfrom");
+                syslog(LOG_WARNING, "client:recvfrom: %m");
                 return -1;
         }
 
         stats->down_rx += nb;
         if (nb < BHD_DNS_H_SIZE)
         {
-                printf("Read %ld bytes, expected %d\n", nb, BHD_DNS_H_SIZE);
+                syslog(LOG_WARNING,
+                       "client:recvfrom %ld bytes, expected %d",
+                       nb,
+                       BHD_DNS_H_SIZE);
                 return -1;
         }
 
@@ -175,7 +179,10 @@ static int bhd_srv_serve_one(int s,
 
         if (offset != (size_t)nb)
         {
-                printf("WARN:Did not unpack all data!\n");
+                syslog(LOG_WARNING,
+                       "Not all data was unpacked: got %d want %d",
+                       offset,
+                       nb);
                 return -1;
         }
 
@@ -217,7 +224,7 @@ static int bhd_srv_serve_one(int s,
         nb = sendto(fs, buf, nb, 0, (struct sockaddr*)faddr, sizeof(struct sockaddr_in));
         if (nb < 0)
         {
-                perror("forward:sendto");
+                syslog(LOG_WARNING, "forward:sendto: %m");
                 return -1;
         }
         stats->up_tx += nb;
@@ -226,7 +233,7 @@ static int bhd_srv_serve_one(int s,
         nb = recvfrom(fs, buf, BUF_LEN, 0, NULL, NULL);
         if (nb < 0)
         {
-                perror("forward:recvfrom");
+                syslog(LOG_WARNING, "forward:recvfrom: %m");
                 return -1;
         }
         stats->up_rx += nb;
@@ -236,7 +243,7 @@ do_respond:
         nb = sendto(s, buf, nb, 0, (struct sockaddr*)&caddr, sizeof(caddr));
         if (nb < 0)
         {
-                perror("client:sendto");
+                syslog(LOG_WARNING, "client:sendto: %m");
                 return -1;
         }
 
@@ -252,7 +259,7 @@ void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)
 
         if (inet_pton(AF_INET, a, &na) < 0)
         {
-                perror("inet_pton");
+                syslog(LOG_WARNING, "Invalid address '%s': %m", a);
         }
 
         /* two MSB bits to 11, and offset of 12 */

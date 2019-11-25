@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <syslog.h>
 #include "bhd_cfg.h"
 #include "lib/strutil.h"
 
@@ -15,8 +16,7 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
         f = fopen(p, "r");
         if (!f)
         {
-                printf("Failed to open '%s': \n", p);
-                perror("fopen");
+                syslog(LOG_ERR, "%s:open '%s': %m", __func__, p);
                 return -1;
         }
 
@@ -45,7 +45,7 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                 d = strchr(line, ':');
                 if (d == NULL)
                 {
-                        printf("Bad line (%d) '%s'\n", ln, line);
+                        syslog(LOG_WARNING, "Bad line (%d) '%s'", ln, line);
                         continue;
                 }
                 *d++ = '\0';
@@ -61,7 +61,8 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
 
                         if (cfg->port)
                         {
-                                printf("Multiple port declarations at line %d\n",
+                                syslog(LOG_WARNING,
+                                       "Multiple port declarations at line %d",
                                        ln);
                                 continue;
                         }
@@ -69,7 +70,8 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         lv = strtol(d, &ep, 10);
                         if (d == ep)
                         {
-                                printf("Invalid port number %s at line %d\n",
+                                syslog(LOG_WARNING,
+                                       "Invalid port number %s at line %d",
                                        d,
                                        ln);
                                 continue;
@@ -80,7 +82,8 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                 {
                         if (cfg->ifa[0])
                         {
-                                printf("Multiple if declarations at line %d\n",
+                                syslog(LOG_WARNING,
+                                       "Multiple if declarations at line %d",
                                        ln);
                                 continue;
                         }
@@ -94,7 +97,8 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                 {
                         if (cfg->bp[0])
                         {
-                                printf("Multiple blist declarations at line %d\n",
+                                syslog(LOG_WARNING,
+                                       "Multiple blist declarations at line %d",
                                        ln);
                                 continue;
                         }
@@ -104,7 +108,8 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                 {
                         if (cfg->baddr[0])
                         {
-                                printf("Multiple bresp declarations at line %d\n",
+                                syslog(LOG_WARNING,
+                                       "Multiple bresp declarations at line %d",
                                        ln);
                                 continue;
                         }
@@ -114,7 +119,8 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                 {
                         if (cfg->faddr[0])
                         {
-                                printf("Multiple forward-addr declarations at line %d\n",
+                                syslog(LOG_WARNING,
+                                       "Multiple forward-addr declarations at line %d",
                                        ln);
                                 continue;
                         }

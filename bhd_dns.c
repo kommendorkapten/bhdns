@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <syslog.h>
 #include "bhd_dns.h"
 
 size_t bhd_dns_h_unpack(struct bhd_dns_h* h, const unsigned char* buf)
@@ -100,7 +101,7 @@ size_t bhd_dns_q_section_unpack(struct bhd_dns_q_section* qs,
         qs->q = malloc(sizeof(struct bhd_dns_q) * qs->qd_count);
         if (!qs->q)
         {
-                printf("WARN: could not allocate memory\n");
+                syslog(LOG_WARNING, "%s:malloc:%m", __func__);
                 return 0;
         }
 
@@ -205,7 +206,7 @@ size_t bhd_dns_q_unpack(struct bhd_dns_q* q, const unsigned char* buf)
                 label->label = malloc(len + 1);
                 if (!label->label)
                 {
-                        printf("WARN:could not allocate memory\n");
+                        syslog(LOG_WARNING, "%s:malloc:%m", __func__);
                         goto bailout;
                 }
                 memcpy(label->label, buf + br, len);
@@ -225,7 +226,7 @@ size_t bhd_dns_q_unpack(struct bhd_dns_q* q, const unsigned char* buf)
                 label->next = malloc(sizeof(struct bhd_dns_q_label));
                 if (!label->next)
                 {
-                        printf("WARN:could not allocate memory\n");
+                        syslog(LOG_WARNING, "%s:malloc:%m", __func__);
                         goto bailout;
                 }
                 label = label->next;

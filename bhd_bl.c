@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 #include "bhd_dns.h"
 #include "bhd_bl.h"
 #include "lib/hmap.h"
@@ -30,25 +31,27 @@ struct bhd_bl* bhd_bl_create(const char* p)
         f = fopen(p, "r");
         if (!f)
         {
-                printf("Failed to open '%s'\n", p);
-                perror("fopen");
+                syslog(LOG_ERR, "%s:open '%s': %m", __func__, p);
                 return NULL;
         }
 
         bl = malloc(sizeof(struct bhd_bl));
         if (!bl)
         {
+                syslog(LOG_ERR, "%s:malloc: %m", __func__);
                 return NULL;
         }
         bl->tree = hmap_create(NULL, NULL, 16, 0.7f);
         if (!bl->tree)
         {
+                syslog(LOG_ERR, "hmap_create: %m");
                 free(bl);
                 return NULL;
         }
         s = stack_create(10, STACK_AUTO_EXPAND);
         if (!s)
         {
+                syslog(LOG_ERR, "stack_create: %m");
                 hmap_destroy(bl->tree);
                 free(bl);
                 return NULL;
@@ -76,7 +79,8 @@ struct bhd_bl* bhd_bl_create(const char* p)
 
                         if (!label)
                         {
-                                printf("WARN: could not add entry block list\n");
+                                syslog(LOG_WARNING,
+                                       "Could not add entry block list: %m");
                                 goto done;
                         }
 
@@ -84,8 +88,9 @@ struct bhd_bl* bhd_bl_create(const char* p)
                         memcpy(label, start, len + 1);
                         if (stack_push(s, label))
                         {
+                                syslog(LOG_WARNING,
+                                       "Could not add entry block list: %m");
                                 free(label);
-                                printf("WARN: could not add entry block list\n");
                                 goto done;
                         }
                         start = pos + 1;
@@ -97,14 +102,16 @@ struct bhd_bl* bhd_bl_create(const char* p)
                                 label = malloc(len + 1);
                                 if (!label)
                                 {
-                                        printf("WARN: could not add entry block list\n");
+                                        syslog(LOG_WARNING,
+                                               "Could not add entry block list: %m");
                                         goto done;
                                 }
                                 memcpy(label, start, len + 1);
                                 if (stack_push(s, label))
                                 {
+                                        syslog(LOG_WARNING,
+                                               "Could not add entry block list: %m");
                                         free(label);
-                                        printf("WARN: could not add entry block list\n");
                                         goto done;
                                 }
                         }
@@ -116,7 +123,10 @@ struct bhd_bl* bhd_bl_create(const char* p)
 done:
         fclose(f);
         stack_destroy(s);
-        printf("added %d items in %ldms\n", count, timing_dur_msec(&t));
+        syslog(LOG_DEBUG,
+               "added %d items in %ldms",
+               count,
+               timing_dur_msec(&t));
 
         return bl;
 }
@@ -141,7 +151,7 @@ int bhd_bl_match(struct bhd_bl* bl, const struct bhd_dns_q_label* label)
         {
                 if (stack_push(s, label->label))
                 {
-                        printf("WARN:Failed to push\n");
+                        syslog(LOG_WARNING, "%s:stack_push: %m", __func__);
                         ret = 0;
                         goto done;
                 }
@@ -198,7 +208,7 @@ void bhd_bl_free(struct bhd_bl* bl)
 
         if (!s)
         {
-                printf("Could not create stack\n");
+                syslog(LOG_WARNING, "%s:stack_create: %m", __func__);
                 return;
         }
 
@@ -210,7 +220,7 @@ void bhd_bl_free(struct bhd_bl* bl)
                 d = hmap_iter(h, &cnt);
                 if (!d)
                 {
-                        printf("Failed to purge sub-tree\n");
+                        syslog(LOG_WARNING, "Failed to purge sub-tree: %m");
                         continue;
                 }
                 for (size_t i = 0; i < cnt; i++)
@@ -218,7 +228,7 @@ void bhd_bl_free(struct bhd_bl* bl)
                         free((void*)d[i].key);
                         if (stack_push(s, d[i].data))
                         {
-                                printf("Failed to push\n");
+                                syslog(LOG_WARNING, "%s:stack_push: %m", __func__);
                                 break;
                         }
 
@@ -251,13 +261,13 @@ static int bhd_bl_add_labels(struct bhd_bl* bl, struct stack* s)
                         next = hmap_create(NULL, NULL, 16, 0.7f);
                         if (!next)
                         {
-                                printf("Failed to create subtree\n");
+                                syslog(LOG_WARNING, "Failed to create subtree: %m");
                                 free(label);
                                 return 1;
                         }
                         if (hmap_set(hm, label, next))
                         {
-                                printf("Failed to set label\n");
+                                syslog(LOG_WARNING, "Failed to set label: %m");
                                 free(label);
                                 return 1;
                         }

@@ -1,5 +1,5 @@
-#ifndef __BHD_BL_H__
-#define __BHD_BL_H__
+#ifndef BHD_BL_H
+#define BHD_BL_H
 
 struct bhd_bl;
 struct bhd_dns_q_label;
@@ -22,4 +22,4 @@ struct bhd_bl* bhd_bl_create(const char*);
 int bhd_bl_match(struct bhd_bl*, const struct bhd_dns_q_label*);
 void bhd_bl_free(struct bhd_bl*);
 
-#endif /* __BLD_BL_H__ */
+#endif /* BLD_BL_H */

@@ -1,5 +1,5 @@
-#ifndef __BHD_CFG_H__
-#define __BHD_CFG_H__
+#ifndef BHD_CFG_H
+#define BHD_CFG_H
 
 #include <stdint.h>
 
@@ -22,4 +22,4 @@ struct bhd_cfg
  */
 int bhd_cfg_read(struct bhd_cfg*, const char*);
 
-#endif/* __BHD_CFG_H__ */
+#endif/* BHD_CFG_H */

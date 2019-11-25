@@ -1,5 +1,5 @@
-#ifndef __BHD_SRV_H__
-#define __BHD_SRV_H__
+#ifndef BHD_SRV_H
+#define BHD_SRV_H
 
 struct bhd_bl;
 struct bhd_cfg;

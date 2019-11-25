@@ -1,5 +1,5 @@
-#ifndef __BHD_DNS_H__
-#define __BHD_DNS_H__
+#ifndef BHD_DNS_H
+#define BHD_DNS_H
 
 #include <stdint.h>
 
@@ -186,4 +186,4 @@ void bhd_dns_q_dump(const struct bhd_dns_q*);
 /* Internal functions */
 size_t bhd_dns_q_unpack(struct bhd_dns_q*, const unsigned char*);
 size_t bhd_dns_q_pack(unsigned char*, size_t, const struct bhd_dns_q*);
-#endif /* __BHD_DNS_H__ */
+#endif /* BHD_DNS_H */

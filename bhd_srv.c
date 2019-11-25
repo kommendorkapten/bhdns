@@ -127,6 +127,7 @@ int bhd_serve(const struct bhd_cfg* cfg,
                 }
         }
 
+#if 0
         printf("Stop listening\n");
         printf("Forwarded %ld requests\n", stats.numf);
         printf("Blocked %ld requests\n", stats.numb);
@@ -134,6 +135,7 @@ int bhd_serve(const struct bhd_cfg* cfg,
         printf("Upstream rx %ld bytes\n", stats.up_rx);
         printf("Downstream tx %ld bytes\n", stats.down_tx);
         printf("Dowmstream rx %ld bytes\n", stats.down_rx);
+#endif
 
         close(s);
         close(fs);

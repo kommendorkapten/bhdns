@@ -41,8 +41,8 @@ int main(int argc, char** argv)
 
         syslog(LOG_INFO, "Starting: daemon %d", d);
         bl = bhd_bl_create(cfg.bp);
-        syslog(LOG_INFO, "Stopping");
         bhd_serve(&cfg, bl);
+        syslog(LOG_INFO, "Stopping");
         bhd_bl_free(bl);
 
         return 0;

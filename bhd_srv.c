@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <syslog.h>
+#include <poll.h>
 #include "bhd_srv.h"
 #include "bhd_dns.h"
 #include "bhd_bl.h"
@@ -24,6 +25,8 @@ struct bhd_stats
 
 /* Max UDP message size from RFC1035 */
 #define BUF_LEN 512
+/* Default timeout in ms */
+#define BHD_TIMEOUT 5000
 sig_atomic_t run;
 
 void bhd_dns_rr_a_init(struct bhd_dns_rr_a*, const char*);
@@ -149,10 +152,12 @@ static int bhd_srv_serve_one(int s,
         struct sockaddr_in caddr;
         struct bhd_dns_h h;
         struct bhd_dns_q_section qs;
+        struct pollfd fds[1];
         size_t br;
         size_t offset = 0;
         ssize_t nb;
         socklen_t slen = sizeof(caddr);
+        int ready;
 
         nb = recvfrom(s, buf, BUF_LEN, 0, (struct sockaddr*)&caddr, &slen);
         if (nb < 0)
@@ -220,7 +225,9 @@ static int bhd_srv_serve_one(int s,
         }
 
         stats->numf++;
-        /* Add timeout */
+
+        /* Blocking of sendto(2) operations on an UDP socket is very unlikely
+           to happen, so currently we omit calling poll(2). */
         nb = sendto(fs, buf, nb, 0, (struct sockaddr*)faddr, sizeof(struct sockaddr_in));
         if (nb < 0)
         {
@@ -229,7 +236,23 @@ static int bhd_srv_serve_one(int s,
         }
         stats->up_tx += nb;
 
-        /* Add timeout */
+        /* Set timeout before attempting to read */
+        fds[0].fd = fs;
+        fds[0].events = POLLIN;
+        ready = poll(fds, 1, BHD_TIMEOUT);
+        if (ready == 0)
+        {
+                /* timeout */
+                syslog(LOG_WARNING, "%s:timeout waiting for response", __func__);
+                return -1;
+        }
+        else if (ready < 0)
+        {
+                /* error */
+                syslog(LOG_WARNING, "%s:poll:%m", __func__);
+                return -1;
+
+        }
         nb = recvfrom(fs, buf, BUF_LEN, 0, NULL, NULL);
         if (nb < 0)
         {
@@ -239,7 +262,8 @@ static int bhd_srv_serve_one(int s,
         stats->up_rx += nb;
 
 do_respond:
-        /* Add timeout */
+        /* Blocking of sendto(2) operations on an UDP socket is very unlikely
+           to happen, so currently we omit calling poll(2). */
         nb = sendto(s, buf, nb, 0, (struct sockaddr*)&caddr, sizeof(caddr));
         if (nb < 0)
         {

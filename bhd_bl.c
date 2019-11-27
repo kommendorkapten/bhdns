@@ -65,7 +65,7 @@ struct bhd_bl* bhd_bl_create(const char* p)
                 strrstrip(line);
                 strlstrip(line);
 
-                if (line[0] == '#')
+                if (line[0] == '#' || line[] == '\0')
                 {
                         continue;
                 }

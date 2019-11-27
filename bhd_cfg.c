@@ -33,7 +33,7 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                 strlstrip(line);
 
                 /* Skip comments and empty lines */
-                if (line[0] == '#' || line[] == '\0')
+                if (line[0] == '#' || line[0] == '\0')
                 {
                         continue;
                 }

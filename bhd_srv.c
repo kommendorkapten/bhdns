@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <unistd.h>
 #include <signal.h>
 #include <syslog.h>
@@ -13,16 +12,6 @@
 #include "bhd_bl.h"
 #include "bhd_cfg.h"
 
-struct bhd_stats
-{
-        size_t numf;
-        size_t numb;
-        size_t up_tx;
-        size_t up_rx;
-        size_t down_tx;
-        size_t down_rx;
-};
-
 /* Max UDP message size from RFC1035 */
 #define BUF_LEN 512
 /* Default timeout in ms */
@@ -30,6 +19,7 @@ struct bhd_stats
 sig_atomic_t run;
 
 void bhd_dns_rr_a_init(struct bhd_dns_rr_a*, const char*);
+
 /**
  * Return 0 if successful.
  */
@@ -42,21 +32,26 @@ static int bhd_srv_serve_one(int,
 
 static void sigh(int);
 
-int bhd_serve(const struct bhd_cfg* cfg,
-              struct bhd_bl* bl)
+int bhd_srv_init(struct bhd_srv* srv,
+                 const struct bhd_cfg* cfg,
+                 struct bhd_bl* bl,
+                 int daemon)
 {
         struct sockaddr_in saddr;
-        struct sockaddr_in faddr;
         struct sigaction sa;
-        struct bhd_stats stats = {.numf = 0,
-                                  .numb = 0,
-                                  .up_tx = 0,
-                                  .up_rx = 0,
-                                  .down_tx = 0,
-                                  .down_rx = 0};
-        int s;
-        int fs;
         int ret;
+
+        srv->stats = (struct bhd_stats){.numf = 0,
+                                        .numb = 0,
+                                        .up_tx = 0,
+                                        .up_rx = 0,
+                                        .down_tx = 0,
+                                        .down_rx = 0};
+        srv->cfg = cfg;
+        srv->bl = bl;
+        srv->daemon = daemon;
+
+        run = 0;
 
         sa.sa_flags = 0;
         sa.sa_handler = &sigh;
@@ -67,27 +62,26 @@ int bhd_serve(const struct bhd_cfg* cfg,
                 syslog(LOG_WARNING, "Failed to install sighandler %m");
         }
 
-        run = 1;
         /* Set up forward address */
         syslog(LOG_INFO, "Forward address: %s", cfg->faddr);
-        fs = socket(AF_INET, SOCK_DGRAM, 0);
-        if (fs < 0)
+        srv->fd_forward = socket(AF_INET, SOCK_DGRAM, 0);
+        if (srv->fd_forward < 0)
         {
                 syslog(LOG_ERR, "Could not create socket: %m");
                 return -1;
         }
-        memset(&faddr, 0, sizeof(faddr));
-        faddr.sin_family = AF_INET;
-        faddr.sin_port = htons(53);
-        if (inet_pton(AF_INET, cfg->faddr, &faddr.sin_addr) < 0)
+        memset(&srv->faddr, 0, sizeof(srv->faddr));
+        srv->faddr.sin_family = AF_INET;
+        srv->faddr.sin_port = htons(53);
+        if (inet_pton(AF_INET, cfg->faddr, &srv->faddr.sin_addr) < 0)
         {
                 syslog(LOG_ERR, "Invalid address '%s': %m", cfg->faddr);
                 return -1;
         }
 
         /* Set up listening socket */
-        s = socket(AF_INET, SOCK_DGRAM, 0);
-        if (s < 0)
+        srv->fd_listen = socket(AF_INET, SOCK_DGRAM, 0);
+        if (srv->fd_listen < 0)
         {
                 syslog(LOG_ERR, "Could not create socket: %m");
                 return -1;
@@ -111,34 +105,48 @@ int bhd_serve(const struct bhd_cfg* cfg,
 
                 saddr.sin_addr.s_addr = na;
         }
-        ret = bind(s, (struct sockaddr*)&saddr, sizeof(saddr));
+        ret = bind(srv->fd_listen, (struct sockaddr*)&saddr, sizeof(saddr));
         if (ret < 0)
         {
                 syslog(LOG_ERR, "Failed to bind: %m");
                 return -1;
         }
 
+        return 0;
+}
+
+int bhd_serve(struct bhd_srv* srv)
+{
+        int ret;
+
+        run = 1;
         while(run)
         {
-                ret = bhd_srv_serve_one(s, fs, &faddr, bl, &stats, cfg->baddr);
+                ret = bhd_srv_serve_one(srv->fd_listen,
+                                        srv->fd_forward,
+                                        &srv->faddr,
+                                        srv->bl,
+                                        &srv->stats,
+                                        srv->cfg->baddr);
                 if (ret)
                 {
                         syslog(LOG_WARNING, "DNS action failed");
                 }
         }
 
-#if 0
-        printf("Stop listening\n");
-        printf("Forwarded %ld requests\n", stats.numf);
-        printf("Blocked %ld requests\n", stats.numb);
-        printf("Upstream tx %ld bytes\n", stats.up_tx);
-        printf("Upstream rx %ld bytes\n", stats.up_rx);
-        printf("Downstream tx %ld bytes\n", stats.down_tx);
-        printf("Dowmstream rx %ld bytes\n", stats.down_rx);
-#endif
+        if (!srv->daemon)
+        {
+                printf("Stop listening\n");
+                printf("Forwarded %ld requests\n", srv->stats.numf);
+                printf("Blocked %ld requests\n", srv->stats.numb);
+                printf("Upstream tx %ld bytes\n", srv->stats.up_tx);
+                printf("Upstream rx %ld bytes\n", srv->stats.up_rx);
+                printf("Downstream tx %ld bytes\n", srv->stats.down_tx);
+                printf("Dowmstream rx %ld bytes\n", srv->stats.down_rx);
+        }
 
-        close(s);
-        close(fs);
+        close(srv->fd_listen);
+        close(srv->fd_forward);
 
         return 0;
 }
@@ -184,8 +192,19 @@ static int bhd_srv_serve_one(int s,
         br = bhd_dns_q_section_unpack(&qs, buf + offset);
         offset += br;
 
-        if (offset != (size_t)nb)
+#if DEBUG
+        bhd_dns_h_dump(&h);
+#endif
+        /* If ad flag is set, ignore additional data */
+        if (offset != (size_t)nb && h.ad == 0)
         {
+#if DEBUG
+                for (int i = offset; i < nb; i++)
+                {
+                        printf("%02x:", buf[i]);
+                }
+                printf("\n");
+#endif
                 syslog(LOG_WARNING,
                        "Not all data was unpacked: got %d want %d",
                        offset,

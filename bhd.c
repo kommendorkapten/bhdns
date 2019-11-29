@@ -4,7 +4,9 @@
 #include <syslog.h>
 #include <signal.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 #include <fcntl.h>
+#include <pwd.h>
 #include "bhd_cfg.h"
 #include "bhd_srv.h"
 #include "bhd_bl.h"
@@ -13,6 +15,7 @@ void daemonize(void);
 
 int main(int argc, char** argv)
 {
+        struct bhd_srv srv;
         char* cfgp = "/etc/bhdns";
         struct bhd_cfg cfg;
         struct bhd_bl* bl;
@@ -44,13 +47,53 @@ int main(int argc, char** argv)
         c = bhd_cfg_read(&cfg, cfgp);
         if (c)
         {
-                printf("No configuration found, exiting");
+                syslog(LOG_ERR, "No configuration found, exiting");
                 return 1;
         }
         bl = bhd_bl_create(cfg.bp);
 
         syslog(LOG_INFO, "Starting");
-        bhd_serve(&cfg, bl);
+        if (bhd_srv_init(&srv, &cfg, bl, d) < 0)
+        {
+                syslog(LOG_ERR, "Can't initialize");
+                return 1;
+        }
+
+        if (d)
+        {
+                /* Setup done, drop privileges */
+                struct passwd* pwd = getpwnam(cfg.user);
+
+                if (!pwd)
+                {
+                        syslog(LOG_ERR, "User %s not found: %m", cfg.user);
+                        return 1;
+                }
+
+                if (setgid(pwd->pw_gid) < 0)
+                {
+                        syslog(LOG_ERR, "setgid: %m");
+                        return 1;
+                }
+                if (setuid(pwd->pw_uid) < 0)
+                {
+                        syslog(LOG_ERR, "setuid: %m");
+                        return 1;
+                }
+        }
+#if DEBUG
+        else
+        {
+                printf("ifa: %s\n", cfg.ifa);
+                printf("bp: %s\n", cfg.bp);
+                printf("baddr: %s\n", cfg.baddr);
+                printf("faddr: %s\n", cfg.faddr);
+                printf("user: %s\n", cfg.user);
+                printf("port: %d\n", cfg.port);
+        }
+#endif
+
+        bhd_serve(&srv);
         syslog(LOG_INFO, "Stopping");
         bhd_bl_free(bl);
 

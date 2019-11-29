@@ -49,8 +49,9 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                 strlstrip(d);
 
                 size_t vlen = strlen(d) + 1;
+                size_t slen = strlen(line);
 
-                if (strncmp("listen-port", line, vlen) == 0)
+                if (strncmp("listen-port", line, slen) == 0)
                 {
                         long lv;
                         char* ep;
@@ -74,7 +75,7 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         }
                         cfg->lport = (uint16_t)lv;
                 }
-                else if (strncmp("listen-addr", line, vlen) == 0)
+                else if (strncmp("listen-addr", line, slen) == 0)
                 {
                         if (cfg->laddr[0])
                         {
@@ -85,7 +86,7 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         }
                         strncpy(cfg->laddr, d, vlen);
                 }
-                else if (strncmp("blist", line, vlen) == 0)
+                else if (strncmp("blist", line, slen) == 0)
                 {
                         if (cfg->bp[0])
                         {
@@ -96,7 +97,7 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         }
                         strncpy(cfg->bp, d, vlen);
                 }
-                else if (strncmp("bresp", line, vlen) == 0)
+                else if (strncmp("bresp", line, slen) == 0)
                 {
                         if (cfg->baddr[0])
                         {
@@ -107,7 +108,7 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         }
                         strncpy(cfg->baddr, d, vlen);
                 }
-                else if (strncmp("forward-addr", line, vlen) == 0)
+                else if (strncmp("forward-addr", line, slen) == 0)
                 {
                         if (cfg->faddr[0])
                         {
@@ -118,7 +119,7 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         }
                         strncpy(cfg->faddr, d, vlen);
                 }
-                else if (strncmp("forward-port", line, vlen) == 0)
+                else if (strncmp("forward-port", line, slen) == 0)
                 {
                         long lv;
                         char* ep;
@@ -142,7 +143,7 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         }
                         cfg->fport = (uint16_t)lv;
                 }
-                else if (strncmp("user", line, vlen) == 0)
+                else if (strncmp("user", line, slen) == 0)
                 {
                         if (cfg->user[0])
                         {

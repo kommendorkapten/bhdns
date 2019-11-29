@@ -207,7 +207,7 @@ static int bhd_srv_serve_one(int s,
                 printf("\n");
 #endif
                 syslog(LOG_WARNING,
-                       "Not all data was unpacked: got %d want %d",
+                       "Not all data was unpacked: got %ld want %ld",
                        offset,
                        nb);
                 return -1;

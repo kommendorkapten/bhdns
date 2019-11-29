@@ -18,6 +18,7 @@ size_t bhd_dns_h_unpack(struct bhd_dns_h* h, const unsigned char* buf)
         memcpy(&u8, buf + 2, 1);
         h->qr = (uint8_t)((u8 & 0x80) >> 7);
         h->opcode = (uint8_t)((u8 & 0x78) >> 3);
+        h->aa = (uint8_t)((u8 & 0x4) >> 2);
         h->tc = (uint8_t)((u8 & 0x2) >> 1);
         h->rd = (uint8_t)((u8 & 0x1));
 
@@ -61,6 +62,7 @@ size_t bhd_dns_h_pack(unsigned char* buf,
         u8 = 0;
         u8 |= (uint8_t)((h->qr & 0x1) << 7);
         u8 |= (uint8_t)((h->opcode & 0xf) << 3);
+        u8 |= (uint8_t)((h->aa & 0x4) >> 2);
         u8 |= (uint8_t)((h->tc & 0x1) << 1);
         u8 |= (uint8_t)(h->rd & 0x1);
         memcpy(buf + 2, &u8, 1);

@@ -63,7 +63,8 @@ int bhd_srv_init(struct bhd_srv* srv,
         }
 
         /* Set up forward address */
-        syslog(LOG_INFO, "Forward address: %s", cfg->faddr);
+        syslog(LOG_INFO, "Listen address: %s@%d", cfg->laddr, cfg->lport);
+        syslog(LOG_INFO, "Forward address: %s@%d", cfg->faddr, cfg->fport);
         srv->fd_forward = socket(AF_INET, SOCK_DGRAM, 0);
         if (srv->fd_forward < 0)
         {
@@ -72,7 +73,7 @@ int bhd_srv_init(struct bhd_srv* srv,
         }
         memset(&srv->faddr, 0, sizeof(srv->faddr));
         srv->faddr.sin_family = AF_INET;
-        srv->faddr.sin_port = htons(53);
+        srv->faddr.sin_port = htons(cfg->fport);
         if (inet_pton(AF_INET, cfg->faddr, &srv->faddr.sin_addr) < 0)
         {
                 syslog(LOG_ERR, "Invalid address '%s': %m", cfg->faddr);
@@ -88,8 +89,8 @@ int bhd_srv_init(struct bhd_srv* srv,
         }
         memset(&saddr, 0, sizeof(saddr));
         saddr.sin_family = AF_INET;
-        saddr.sin_port = htons(cfg->port);
-        if (strncmp(cfg->ifa, "all", 3) == 0)
+        saddr.sin_port = htons(cfg->lport);
+        if (strncmp(cfg->laddr, "0.0.0.0", 7) == 0)
         {
                 saddr.sin_addr.s_addr = htonl(INADDR_ANY);
         }
@@ -97,9 +98,9 @@ int bhd_srv_init(struct bhd_srv* srv,
         {
                 uint32_t na;
 
-                if (inet_pton(AF_INET, cfg->ifa, &na) < 0)
+                if (inet_pton(AF_INET, cfg->laddr, &na) < 0)
                 {
-                        syslog(LOG_ERR, "Invalid address '%s': %m", cfg->ifa);
+                        syslog(LOG_ERR, "Invalid address '%s': %m", cfg->laddr);
                         return -1;
                 }
 

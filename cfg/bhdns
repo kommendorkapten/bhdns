@@ -1,13 +1,14 @@
 # Black Hole DNS config
 # Port to listen on.
-port: 53
+listen-port: 53
+# Address to listen on. Use '0.0.0.0' for all interfaces.
+listen-addr: 0.0.0.0
 # User to execute as
 user: nobody
-# Interface to listen on. Use 'all' for all interface (wildcard).
-if: ALL
 # Path to file with black listed domains/hosts.
 blist: /var/bhdns/blist
 # Response IP to respond with for blocked entries
 bresp: 0.0.0.0
 # Address of resolver
 forward-addr: 1.1.1.1
+forward-port: 5353

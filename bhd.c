@@ -84,12 +84,13 @@ int main(int argc, char** argv)
 #if DEBUG
         else
         {
-                printf("ifa: %s\n", cfg.ifa);
+                printf("laddr: %s\n", cfg.laddr);
+                printf("lport: %d\n", cfg.lport);
                 printf("bp: %s\n", cfg.bp);
                 printf("baddr: %s\n", cfg.baddr);
                 printf("faddr: %s\n", cfg.faddr);
+                printf("fport: %d\n", cfg.fport);
                 printf("user: %s\n", cfg.user);
-                printf("port: %d\n", cfg.port);
         }
 #endif
 

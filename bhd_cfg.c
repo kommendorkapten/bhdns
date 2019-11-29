@@ -50,15 +50,15 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
 
                 size_t vlen = strlen(d) + 1;
 
-                if (strncmp("port", line, vlen) == 0)
+                if (strncmp("listen-port", line, vlen) == 0)
                 {
                         long lv;
                         char* ep;
 
-                        if (cfg->port)
+                        if (cfg->lport)
                         {
                                 syslog(LOG_WARNING,
-                                       "Multiple port declarations at line %d",
+                                       "Multiple listen-port declarations at line %d",
                                        ln);
                                 continue;
                         }
@@ -67,27 +67,23 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         if (d == ep)
                         {
                                 syslog(LOG_WARNING,
-                                       "Invalid port number %s at line %d",
+                                       "Invalid listen-port number %s at line %d",
                                        d,
                                        ln);
                                 continue;
                         }
-                        cfg->port = (uint16_t)lv;
+                        cfg->lport = (uint16_t)lv;
                 }
-                else if (strncmp("if", line, vlen) == 0)
+                else if (strncmp("listen-addr", line, vlen) == 0)
                 {
-                        if (cfg->ifa[0])
+                        if (cfg->laddr[0])
                         {
                                 syslog(LOG_WARNING,
-                                       "Multiple if declarations at line %d",
+                                       "Multiple listen-addr declarations at line %d",
                                        ln);
                                 continue;
                         }
-                        strncpy(cfg->ifa, d, vlen);
-                        for (size_t i = 0; i < vlen; i++)
-                        {
-                                cfg->ifa[i] = (char)tolower(cfg->ifa[i]);
-                        }
+                        strncpy(cfg->laddr, d, vlen);
                 }
                 else if (strncmp("blist", line, vlen) == 0)
                 {
@@ -122,6 +118,30 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         }
                         strncpy(cfg->faddr, d, vlen);
                 }
+                else if (strncmp("forward-port", line, vlen) == 0)
+                {
+                        long lv;
+                        char* ep;
+
+                        if (cfg->fport)
+                        {
+                                syslog(LOG_WARNING,
+                                       "Multiple forward-port declarations at line %d",
+                                       ln);
+                                continue;
+                        }
+
+                        lv = strtol(d, &ep, 10);
+                        if (d == ep)
+                        {
+                                syslog(LOG_WARNING,
+                                       "Invalid forward-port number %s at line %d",
+                                       d,
+                                       ln);
+                                continue;
+                        }
+                        cfg->fport = (uint16_t)lv;
+                }
                 else if (strncmp("user", line, vlen) == 0)
                 {
                         if (cfg->user[0])
@@ -136,13 +156,17 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
 
         }
 
-        if (!cfg->port)
+        if (!cfg->lport)
         {
-                cfg->port = 53;
+                cfg->lport = 53;
         }
-        if (!cfg->ifa[0])
+        if (!cfg->fport)
         {
-                strncpy(cfg->ifa, "all", STR_LEN-1);
+                cfg->fport = 53;
+        }
+        if (!cfg->laddr[0])
+        {
+                strncpy(cfg->laddr, "0.0.0.0", STR_LEN-1);
         }
         if (!cfg->bp[0])
         {

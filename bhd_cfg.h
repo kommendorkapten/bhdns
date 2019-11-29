@@ -7,12 +7,13 @@
 
 struct bhd_cfg
 {
-        char ifa[STR_LEN];
+        char laddr[STR_LEN];
         char bp[STR_LEN];
         char baddr[STR_LEN];
         char faddr[STR_LEN];
         char user[STR_LEN];
-        uint16_t port;
+        uint16_t lport;
+        uint16_t fport;
 };
 
 /**

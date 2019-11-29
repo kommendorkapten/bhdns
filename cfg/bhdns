@@ -1,11 +1,12 @@
 # Black Hole DNS config
 # Port to listen on.
-port: 1337
+port: 53
+# User to execute as
+user: nobody
 # Interface to listen on. Use 'all' for all interface (wildcard).
 if: ALL
 # Path to file with black listed domains/hosts.
 blist: /var/bhdns/blist
-
 # Response IP to respond with for blocked entries
 bresp: 0.0.0.0
 # Address of resolver

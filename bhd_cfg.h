@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define STR_LEN 256
+#define STR_LEN 128
 
 struct bhd_cfg
 {
@@ -11,6 +11,7 @@ struct bhd_cfg
         char bp[STR_LEN];
         char baddr[STR_LEN];
         char faddr[STR_LEN];
+        char user[STR_LEN];
         uint16_t port;
 };
 

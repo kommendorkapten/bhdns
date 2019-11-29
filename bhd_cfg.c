@@ -122,6 +122,17 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         }
                         strncpy(cfg->faddr, d, vlen);
                 }
+                else if (strncmp("user", line, vlen) == 0)
+                {
+                        if (cfg->user[0])
+                        {
+                                syslog(LOG_WARNING,
+                                       "Multiple user declarations at line %d",
+                                       ln);
+                                continue;
+                        }
+                        strncpy(cfg->user, d, vlen);
+                }
 
         }
 

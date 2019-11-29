@@ -1,14 +1,14 @@
-CC       = c99
+CC       = gcc
 CFLAGS   = -D_POSIX_C_SOURCE=200112L -g -m64 -O3
-CF_GCC   = -std=c99 -pedantic -fstrict-aliasing \
+CF_gcc   = -std=c99 -pedantic -fstrict-aliasing \
            -Wextra -Wall -Wstrict-aliasing -Wconversion -Wno-sign-conversion
-CF_CLANG = -std=c99 -pedantic -fstrict-aliasing \
+CF_clang = -std=c99 -pedantic -fstrict-aliasing \
            -Wextra -Wall -Wstrict-aliasing -Wconversion -Wno-sign-conversion
-CF_C99   = -v -errwarn -mt -xalias_level=std
-CFLAGS  += $(CF_C99)
+CF_c99   = -v -errwarn -mt -xalias_level=std
+CFLAGS  += $(CF_$(CC))
 
-LNET     =-lnsl -lsocket
-#LNET     =
+#LNET     =-lnsl -lsocket
+LNET     =
 LFLAGS   = $(LNET)
 
 VPATH = lib

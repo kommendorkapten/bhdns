@@ -14,6 +14,7 @@ struct bhd_cfg
         char user[STR_LEN];
         uint16_t lport;
         uint16_t fport;
+        uint16_t sport;
 };
 
 /**

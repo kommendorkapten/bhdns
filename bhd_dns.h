@@ -183,6 +183,15 @@ void bhd_dns_h_dump(const struct bhd_dns_h*);
 void bhd_dns_q_section_dump(const struct bhd_dns_q_section*);
 void bhd_dns_q_dump(const struct bhd_dns_q*);
 
+/**
+ * Initialize a resource record (A), using name compression pointing
+ * to the first query section after the header (offset 12bytes).
+ * @param rr the resource record to initialize.
+ * @param a the address (dot notation) to use in the response.
+ * @return void.
+ */
+void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a);
+
 /* Internal functions */
 size_t bhd_dns_q_unpack(struct bhd_dns_q*, const unsigned char*);
 size_t bhd_dns_q_pack(unsigned char*, size_t, const struct bhd_dns_q*);

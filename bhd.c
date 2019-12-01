@@ -86,6 +86,7 @@ int main(int argc, char** argv)
         {
                 printf("laddr: %s\n", cfg.laddr);
                 printf("lport: %d\n", cfg.lport);
+                printf("sport: %d\n", cfg.sport);
                 printf("bp: %s\n", cfg.bp);
                 printf("baddr: %s\n", cfg.baddr);
                 printf("faddr: %s\n", cfg.faddr);

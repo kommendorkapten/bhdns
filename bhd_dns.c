@@ -356,3 +356,22 @@ void bhd_dns_q_dump(const struct bhd_dns_q* q)
         }
         printf("\nqtype: %d\nqclass: %d\n", q->qtype, q->qclass);
 }
+
+void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)
+{
+        uint32_t na;
+
+        if (inet_pton(AF_INET, a, &na) < 0)
+        {
+                syslog(LOG_WARNING, "Invalid address '%s': %m", a);
+        }
+
+        /* two MSB bits to 11, and offset of 12 */
+        /* 11000000 00001100 */
+        rr->name = 0xc00c;
+        rr->type = (uint16_t)BHD_DNS_QTYPE_A;
+        rr->class = (uint16_t)BHD_DNS_CLASS_IN;
+        rr->ttl = 86400; /* 24h */
+        rr->rdlength = 4;
+        rr->addr = na;
+}

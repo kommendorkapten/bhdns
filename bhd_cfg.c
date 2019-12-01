@@ -143,6 +143,30 @@ int bhd_cfg_read(struct bhd_cfg* cfg, const char* p)
                         }
                         cfg->fport = (uint16_t)lv;
                 }
+                else if (strncmp("stats-port", line, slen) == 0)
+                {
+                        long lv;
+                        char* ep;
+
+                        if (cfg->sport)
+                        {
+                                syslog(LOG_WARNING,
+                                       "Multiple stats-port declarations at line %d",
+                                       ln);
+                                continue;
+                        }
+
+                        lv = strtol(d, &ep, 10);
+                        if (d == ep)
+                        {
+                                syslog(LOG_WARNING,
+                                       "Invalid stats-port number %s at line %d",
+                                       d,
+                                       ln);
+                                continue;
+                        }
+                        cfg->sport = (uint16_t)lv;
+                }
                 else if (strncmp("user", line, slen) == 0)
                 {
                         if (cfg->user[0])

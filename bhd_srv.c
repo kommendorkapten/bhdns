@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <syslog.h>
 #include <poll.h>
+#include <ctype.h>
 #include "bhd_srv.h"
 #include "bhd_dns.h"
 #include "bhd_bl.h"
@@ -18,18 +19,17 @@
 #define BHD_TIMEOUT 5000
 sig_atomic_t run;
 
-void bhd_dns_rr_a_init(struct bhd_dns_rr_a*, const char*);
+int bhd_srv_stat_str(char* buf, int len, const struct bhd_stats* stats);
 
 /**
  * Return 0 if successful.
  */
-static int bhd_srv_serve_one(int,
-                             int,
-                             struct sockaddr_in*,
-                             struct bhd_bl*,
-                             struct bhd_stats*,
-                             const char*);
+static int bhd_srv_serve_dns(struct bhd_srv* srv);
+static int bhd_srv_serve_stats(struct bhd_srv* srv);
 
+/**
+ * Default signal handler.
+ */
 static void sigh(int);
 
 int bhd_srv_init(struct bhd_srv* srv,
@@ -113,25 +113,75 @@ int bhd_srv_init(struct bhd_srv* srv,
                 return -1;
         }
 
+        /* Stats socket */
+        srv->fd_stats = socket(AF_INET, SOCK_DGRAM, 0);
+        if (srv->fd_stats < 0)
+        {
+                syslog(LOG_ERR, "Could not create socket: %m");
+                return -1;
+        }
+        memset(&saddr, 0, sizeof(saddr));
+        saddr.sin_family = AF_INET;
+        saddr.sin_port = htons(cfg->sport);
+        if (strncmp(cfg->laddr, "0.0.0.0", 7) == 0)
+        {
+                saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        }
+        else
+        {
+                uint32_t na;
+
+                if (inet_pton(AF_INET, cfg->laddr, &na) < 0)
+                {
+                        syslog(LOG_ERR, "Invalid address '%s': %m", cfg->laddr);
+                        return -1;
+                }
+
+                saddr.sin_addr.s_addr = na;
+        }
+        ret = bind(srv->fd_stats, (struct sockaddr*)&saddr, sizeof(saddr));
+        if (ret < 0)
+        {
+                syslog(LOG_ERR, "Failed to bind: %m");
+                return -1;
+        }
+
         return 0;
 }
 
 int bhd_serve(struct bhd_srv* srv)
 {
+        struct pollfd fds[2];
         int ret;
+
+        fds[0].fd = srv->fd_listen;
+        fds[0].events = POLLIN;
+        fds[1].fd = srv->fd_stats;
+        fds[1].events = POLLIN;
 
         run = 1;
         while(run)
         {
-                ret = bhd_srv_serve_one(srv->fd_listen,
-                                        srv->fd_forward,
-                                        &srv->faddr,
-                                        srv->bl,
-                                        &srv->stats,
-                                        srv->cfg->baddr);
-                if (ret)
+                int ready = poll(fds, 2, -1);
+
+                if (ready < 0)
                 {
-                        syslog(LOG_WARNING, "DNS action failed");
+                        /* error */
+                        syslog(LOG_WARNING, "%s:poll:%m", __func__);
+                        continue;
+                }
+
+                if (fds[0].revents & POLLIN)
+                {
+                        ret = bhd_srv_serve_dns(srv);
+                        if (ret)
+                        {
+                                syslog(LOG_WARNING, "DNS query failed");
+                        }
+                }
+                if (fds[1].revents & POLLIN)
+                {
+                        bhd_srv_serve_stats(srv);
                 }
         }
 
@@ -152,12 +202,7 @@ int bhd_serve(struct bhd_srv* srv)
         return 0;
 }
 
-static int bhd_srv_serve_one(int s,
-                             int fs,
-                             struct sockaddr_in* faddr,
-                             struct bhd_bl* bl,
-                             struct bhd_stats* stats,
-                             const char* baddr)
+static int bhd_srv_serve_dns(struct bhd_srv* srv)
 {
         unsigned char buf[BUF_LEN];
         struct sockaddr_in caddr;
@@ -170,14 +215,19 @@ static int bhd_srv_serve_one(int s,
         socklen_t slen = sizeof(caddr);
         int ready;
 
-        nb = recvfrom(s, buf, BUF_LEN, 0, (struct sockaddr*)&caddr, &slen);
+        nb = recvfrom(srv->fd_listen,
+                      buf,
+                      BUF_LEN,
+                      0,
+                      (struct sockaddr*)&caddr,
+                      &slen);
         if (nb < 0)
         {
                 syslog(LOG_WARNING, "client:recvfrom: %m");
                 return -1;
         }
 
-        stats->down_rx += nb;
+        srv->stats.down_rx += nb;
         if (nb < BHD_DNS_H_SIZE)
         {
                 syslog(LOG_WARNING,
@@ -220,14 +270,14 @@ static int bhd_srv_serve_one(int s,
             qs.q->qclass == BHD_DNS_CLASS_IN)
         {
                 struct bhd_dns_q_label* l = &qs.q->qname;
-                int m = bhd_bl_match(bl, l);
+                int m = bhd_bl_match(srv->bl, l);
 
                 if (m)
                 {
                         /* Send static response */
                         struct bhd_dns_rr_a rr;
 
-                        bhd_dns_rr_a_init(&rr, baddr);
+                        bhd_dns_rr_a_init(&rr, srv->cfg->baddr);
                         h.qr = 1;
                         h.ra = 1;
                         h.an_count = 1;
@@ -240,26 +290,31 @@ static int bhd_srv_serve_one(int s,
                                                 BUF_LEN - nb,
                                                 &rr);
 
-                        stats->numb++;
+                        srv->stats.numb++;
                         goto do_respond;
                 }
 
         }
 
-        stats->numf++;
+        srv->stats.numf++;
 
         /* Blocking of sendto(2) operations on an UDP socket is very unlikely
            to happen, so currently we omit calling poll(2). */
-        nb = sendto(fs, buf, nb, 0, (struct sockaddr*)faddr, sizeof(struct sockaddr_in));
+        nb = sendto(srv->fd_forward,
+                    buf,
+                    nb,
+                    0,
+                    (struct sockaddr*)&srv->faddr,
+                    sizeof(struct sockaddr_in));
         if (nb < 0)
         {
                 syslog(LOG_WARNING, "forward:sendto: %m");
                 return -1;
         }
-        stats->up_tx += nb;
+        srv->stats.up_tx += nb;
 
         /* Set timeout before attempting to read */
-        fds[0].fd = fs;
+        fds[0].fd = srv->fd_forward;
         fds[0].events = POLLIN;
         ready = poll(fds, 1, BHD_TIMEOUT);
         if (ready == 0)
@@ -275,47 +330,95 @@ static int bhd_srv_serve_one(int s,
                 return -1;
 
         }
-        nb = recvfrom(fs, buf, BUF_LEN, 0, NULL, NULL);
+        nb = recvfrom(srv->fd_forward, buf, BUF_LEN, 0, NULL, NULL);
         if (nb < 0)
         {
                 syslog(LOG_WARNING, "forward:recvfrom: %m");
                 return -1;
         }
-        stats->up_rx += nb;
+        srv->stats.up_rx += nb;
 
 do_respond:
         /* Blocking of sendto(2) operations on an UDP socket is very unlikely
            to happen, so currently we omit calling poll(2). */
-        nb = sendto(s, buf, nb, 0, (struct sockaddr*)&caddr, sizeof(caddr));
+        nb = sendto(srv->fd_listen,
+                    buf,
+                    nb,
+                    0,
+                    (struct sockaddr*)&caddr,
+                    sizeof(caddr));
         if (nb < 0)
         {
                 syslog(LOG_WARNING, "client:sendto: %m");
                 return -1;
         }
 
-        stats->down_tx += nb;
+        srv->stats.down_tx += nb;
         bhd_dns_q_section_free(&qs);
 
         return 0;
 }
 
-void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)
-{
-        uint32_t na;
 
-        if (inet_pton(AF_INET, a, &na) < 0)
+static int bhd_srv_serve_stats(struct bhd_srv* srv)
+{
+        unsigned char buf[BUF_LEN];
+        struct sockaddr_in caddr;
+        ssize_t nb;
+        socklen_t slen = sizeof(caddr);
+
+        nb = recvfrom(srv->fd_stats,
+                      buf,
+                      BUF_LEN,
+                      0,
+                      (struct sockaddr*)&caddr,
+                      &slen);
+        if (nb < 0)
         {
-                syslog(LOG_WARNING, "Invalid address '%s': %m", a);
+                syslog(LOG_WARNING, "client:recvfrom: %m");
+                return -1;
+        }
+        if (nb < 5)
+        {
+                return 0;
+        }
+        for (int i = 0; i < 5; i++)
+        {
+                buf[i] = (unsigned char)tolower(buf[i]);
+        }
+        if (strncmp((char*)&buf[0], "stats", 5))
+        {
+                return 0;
         }
 
-        /* two MSB bits to 11, and offset of 12 */
-        /* 11000000 00001100 */
-        rr->name = 0xc00c;
-        rr->type = (uint16_t)BHD_DNS_QTYPE_A;
-        rr->class = (uint16_t)BHD_DNS_CLASS_IN;
-        rr->ttl = 86400; /* 24h */
-        rr->rdlength = 4;
-        rr->addr = na;
+        nb = bhd_srv_stat_str((char*)&buf[0], BUF_LEN, &srv->stats);
+        nb = sendto(srv->fd_stats,
+                    buf,
+                    nb,
+                    0,
+                    (struct sockaddr*)&caddr,
+                    sizeof(caddr));
+        if (nb < 0)
+        {
+                syslog(LOG_WARNING, "client:sendto: %m");
+                return -1;
+        }
+
+        return 0;
+}
+
+int bhd_srv_stat_str(char* buf, int len, const struct bhd_stats* stats)
+{
+        int nb = 0;
+
+        nb += snprintf(buf+nb, len - nb, "requests.block:%ld\n", stats->numb);
+        nb += snprintf(buf+nb, len - nb, "requests.forward:%ld\n", stats->numf);
+        nb += snprintf(buf+nb, len - nb, "upstream.tx:%ld\n", stats->up_tx);
+        nb += snprintf(buf+nb, len - nb, "upstream.rx:%ld\n", stats->up_rx);
+        nb += snprintf(buf+nb, len - nb, "downstream.tx:%ld\n", stats->down_tx);
+        nb += snprintf(buf+nb, len - nb, "downsteram.rx:%ld\n", stats->down_rx);
+
+        return nb;
 }
 
 static void sigh(int signum)

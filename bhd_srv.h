@@ -6,6 +6,8 @@
 struct bhd_bl;
 struct bhd_cfg;
 
+/* Naming is based on responses, i.e upstream is where requests are
+   forwarded */
 struct bhd_stats
 {
         size_t numf;
@@ -24,7 +26,8 @@ struct bhd_srv
         struct bhd_bl* bl;
         int fd_listen;
         int fd_forward;
-        int daemon;
+        int fd_stats;
+        char daemon;
 };
 
 /**

@@ -3,6 +3,8 @@
 listen-port: 53
 # Address to listen on. Use '0.0.0.0' for all interfaces.
 listen-addr: 0.0.0.0
+# Port to get statistics from
+stats-port: 2053
 # User to execute as
 user: nobody
 # Path to file with black listed domains/hosts.

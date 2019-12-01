@@ -49,7 +49,7 @@ int bhd_srv_init(struct bhd_srv* srv,
                                         .down_rx = 0};
         srv->cfg = cfg;
         srv->bl = bl;
-        srv->daemon = daemon;
+        srv->daemon = (char)daemon;
 
         run = 0;
 

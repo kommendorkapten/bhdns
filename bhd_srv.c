@@ -12,6 +12,7 @@
 #include "bhd_dns.h"
 #include "bhd_bl.h"
 #include "bhd_cfg.h"
+#include "lib/timing.h"
 
 /* Max UDP message size from RFC1035 */
 #define BUF_LEN 512
@@ -293,7 +294,6 @@ static int bhd_srv_serve_dns(struct bhd_srv* srv)
                         srv->stats.numb++;
                         goto do_respond;
                 }
-
         }
 
         srv->stats.numf++;
@@ -313,30 +313,55 @@ static int bhd_srv_serve_dns(struct bhd_srv* srv)
         }
         srv->stats.up_tx += nb;
 
-        /* Set timeout before attempting to read */
-        fds[0].fd = srv->fd_forward;
-        fds[0].events = POLLIN;
-        ready = poll(fds, 1, BHD_TIMEOUT);
-        if (ready == 0)
-        {
-                /* timeout */
-                syslog(LOG_WARNING, "%s:timeout waiting for response", __func__);
-                return -1;
-        }
-        else if (ready < 0)
-        {
-                /* error */
-                syslog(LOG_WARNING, "%s:poll:%m", __func__);
-                return -1;
+        struct timing start;
+        int timeout = BHD_TIMEOUT;
 
-        }
-        nb = recvfrom(srv->fd_forward, buf, BUF_LEN, 0, NULL, NULL);
-        if (nb < 0)
+        timing_start(&start);
+        for (;;)
         {
-                syslog(LOG_WARNING, "forward:recvfrom: %m");
-                return -1;
+                uint16_t resp_id;
+
+                if (timeout < 1)
+                {
+                        syslog(LOG_WARNING, "%s:timeout waiting for response", __func__);
+                        return -1;
+                }
+
+                /* Set timeout before attempting to read */
+                fds[0].fd = srv->fd_forward;
+                fds[0].events = POLLIN;
+                ready = poll(fds, 1, timeout);
+                if (ready == 0)
+                {
+                        /* timeout */
+                        syslog(LOG_WARNING, "%s:timeout waiting for response", __func__);
+                        return -1;
+                }
+                else if (ready < 0)
+                {
+                        /* error */
+                        syslog(LOG_WARNING, "%s:poll:%m", __func__);
+                        return -1;
+
+                }
+                nb = recvfrom(srv->fd_forward, buf, BUF_LEN, 0, NULL, NULL);
+                if (nb < 0)
+                {
+                        syslog(LOG_WARNING, "forward:recvfrom: %m");
+                        return -1;
+                }
+                srv->stats.up_rx += nb;
+
+                /* Respond's id shall match request's id */
+                memcpy(&resp_id, buf, 2);
+                resp_id = ntohs(resp_id);
+                if (h.id == resp_id)
+                {
+                        break;
+                }
+                syslog(LOG_INFO, "%s:response id mismatch", __func__);
+                timeout -= (int)timing_dur_msec(&start);
         }
-        srv->stats.up_rx += nb;
 
 do_respond:
         /* Blocking of sendto(2) operations on an UDP socket is very unlikely

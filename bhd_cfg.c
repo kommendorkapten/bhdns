@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <syslog.h>
 #include "bhd_cfg.h"
-#include "lib/strutil.h"
+#include "vendor/strutil.h"
 
 #define MAX_LINE 512
 

@@ -4,10 +4,10 @@
 #include <syslog.h>
 #include "bhd_dns.h"
 #include "bhd_bl.h"
-#include "lib/hmap.h"
-#include "lib/strutil.h"
-#include "lib/stack.h"
-#include "lib/timing.h"
+#include "vendor/hmap.h"
+#include "vendor/strutil.h"
+#include "vendor/stack.h"
+#include "vendor/timing.h"
 
 struct bhd_bl
 {

@@ -12,7 +12,7 @@
 #include "bhd_dns.h"
 #include "bhd_bl.h"
 #include "bhd_cfg.h"
-#include "lib/timing.h"
+#include "vendor/timing.h"
 
 /* Max UDP message size from RFC1035 */
 #define BUF_LEN 512

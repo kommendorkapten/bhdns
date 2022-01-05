@@ -125,6 +125,16 @@ struct bhd_dns_q_section
         uint16_t qd_count;
 };
 
+struct bhd_dns_rr
+{
+        char* name;
+        uint16_t type;
+        uint16_t class;
+        uint32_t ttl;
+        uint16_t rdlength;
+        char* rdata;
+};
+
 struct bhd_dns_rr_a
 {
         uint16_t name;
@@ -181,6 +191,14 @@ size_t bhd_dns_q_section_pack(unsigned char*,
  * @return number of bytes written.
  */
 size_t bhd_dns_rr_a_pack(unsigned char*, size_t, const struct bhd_dns_rr_a*);
+
+/**
+ * Unpack a generic RR struct.
+ * @param pointer to a rr struct.
+ * @param buffer to read from.
+ * @return number of bytes read.
+ */
+size_t bhd_dns_rr_unpack(struct bhd_dns_rr*, const unsigned char*);
 
 /**
  * Free the memory referenced by the content of the provided struct.

@@ -221,6 +221,7 @@ static int bhd_srv_serve_dns(struct bhd_srv* srv)
         struct sockaddr_in caddr;
         struct bhd_dns_h h;
         struct bhd_dns_q_section qs;
+        struct bhd_dns_rr rr;
         struct pollfd fds[1];
         size_t br;
         size_t offset = 0;
@@ -256,14 +257,29 @@ static int bhd_srv_serve_dns(struct bhd_srv* srv)
         br = bhd_dns_q_section_unpack(&qs, buf + offset);
         offset += br;
 
+        for (uint16_t i = 0; i < h.an_count; i++)
+        {
+                br = bhd_dns_rr_unpack(&rr, buf + offset);
+                offset += br;
+        }
+        for (uint16_t i = 0; i < h.ns_count; i++)
+        {
+                br = bhd_dns_rr_unpack(&rr, buf + offset);
+                offset += br;
+        }
+        for (uint16_t i = 0; i < h.ar_count; i++)
+        {
+                br = bhd_dns_rr_unpack(&rr, buf + offset);
+                offset += br;
+        }
+
 #if DEBUG
         bhd_dns_h_dump(&h);
 #endif
-        /* If ad flag is set, ignore additional data */
-        if (offset != (size_t)nb && h.ad == 0)
+        if (offset != (size_t)nb)
         {
 #if DEBUG
-                for (int i = offset; i < nb; i++)
+                for (ssize_t i = (ssize_t)offset; i < nb; i++)
                 {
                         printf("%02x:", buf[i]);
                 }

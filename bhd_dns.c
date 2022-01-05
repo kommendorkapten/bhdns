@@ -162,7 +162,7 @@ size_t bhd_dns_rr_a_pack(unsigned char* buf,
                 return 0;
         }
 
-        u16= htons(a->name);
+        u16 = htons(a->name);
         memcpy(buf + 0, &u16, 2);
         u16 = htons(a->type);
         memcpy(buf + 2, &u16, 2);
@@ -387,4 +387,32 @@ void bhd_dns_rr_a_init(struct bhd_dns_rr_a* rr, const char* a)
         rr->ttl = 86400; /* 24h */
         rr->rdlength = 4;
         rr->addr = na;
+}
+
+size_t bhd_dns_rr_unpack(struct bhd_dns_rr* rr, const unsigned char* a)
+{
+        size_t offset = 0;
+        if (*a != 0)
+        {
+                abort();
+        }
+        offset += 1;
+
+        memcpy(&rr->type, a + offset, 2);
+        rr->type = ntohs(rr->type);
+        offset += 2;
+
+        memcpy(&rr->class, a + offset, 2);
+        rr->class = ntohs(rr->class);
+        offset += 2;
+
+        memcpy(&rr->ttl, a + offset, 4);
+        rr->ttl = ntohl(rr->ttl);
+        offset += 4;
+
+        memcpy(&rr->rdlength, a + offset, 2);
+        rr->rdlength = ntohs(rr->rdlength);
+        offset += 2;
+
+        return offset;
 }

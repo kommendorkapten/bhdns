@@ -257,6 +257,8 @@ static int bhd_srv_serve_dns(struct bhd_srv* srv)
         br = bhd_dns_q_section_unpack(&qs, buf + offset);
         offset += br;
 
+        /* Consume any incoming RR records to make offset counter match
+           number of bytes read */
         for (uint16_t i = 0; i < h.an_count; i++)
         {
                 br = bhd_dns_rr_unpack(&rr, buf + offset);
